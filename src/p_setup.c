@@ -54,7 +54,7 @@ void	P_SpawnMapThing (mapthing_t*	mthing);
 // Store VERTEXES, LINEDEFS, SIDEDEFS, etc.
 //
 int		numvertexes;
-vertex_t*	vertexes;
+doom_vertex_t*	vertexes;
 
 int		numsegs;
 seg_t*		segs;
@@ -124,14 +124,14 @@ void P_LoadVertexes (int lump)
     byte*		data;
     int			i;
     mapvertex_t*	ml;
-    vertex_t*		li;
+    doom_vertex_t*		li;
 
     // Determine number of lumps:
     //  total lump length / vertex record length.
     numvertexes = W_LumpLength (lump) / sizeof(mapvertex_t);
 
     // Allocate zone memory for buffer.
-    vertexes = Z_Malloc (numvertexes*sizeof(vertex_t),PU_LEVEL,0);	
+    vertexes = Z_Malloc (numvertexes*sizeof(doom_vertex_t),PU_LEVEL,0);	
 
     // Load data into cache.
     data = W_CacheLumpNum (lump,PU_STATIC);
@@ -360,8 +360,8 @@ void P_LoadLineDefs (int lump)
     int			i;
     maplinedef_t*	mld;
     line_t*		ld;
-    vertex_t*		v1;
-    vertex_t*		v2;
+    doom_vertex_t*		v1;
+    doom_vertex_t*		v2;
 	
     numlines = W_LumpLength (lump) / sizeof(maplinedef_t);
     lines = Z_Malloc (numlines*sizeof(line_t),PU_LEVEL,0);	

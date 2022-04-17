@@ -17,6 +17,9 @@ FLAGS = -DNAOMI=1
 # We need GNU extensions.
 CSTD = gnu99
 
+# We are using the add-on sprite library for scaled screen draw.
+LIBS += -lnaomisprite
+
 # We want a different serial to make this unique.
 SERIAL = BDM0
 

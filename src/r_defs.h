@@ -73,7 +73,7 @@ typedef struct
     fixed_t	x;
     fixed_t	y;
     
-} vertex_t;
+} doom_vertex_t;
 
 
 // Forward of LineDefs, for Sectors.
@@ -179,8 +179,8 @@ typedef enum
 typedef struct line_s
 {
     // Vertices, from v1 to v2.
-    vertex_t*	v1;
-    vertex_t*	v2;
+    doom_vertex_t*	v1;
+    doom_vertex_t*	v2;
 
     // Precalculated v2 - v1 for side checking.
     fixed_t	dx;
@@ -239,8 +239,8 @@ typedef struct subsector_s
 //
 typedef struct
 {
-    vertex_t*	v1;
-    vertex_t*	v2;
+    doom_vertex_t*	v1;
+    doom_vertex_t*	v2;
     
     fixed_t	offset;
 

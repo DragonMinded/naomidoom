@@ -76,7 +76,7 @@ extern int		numsprites;
 extern spritedef_t*	sprites;
 
 extern int		numvertexes;
-extern vertex_t*	vertexes;
+extern doom_vertex_t*	vertexes;
 
 extern int		numsegs;
 extern seg_t*		segs;

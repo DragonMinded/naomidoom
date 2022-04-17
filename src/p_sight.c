@@ -145,8 +145,8 @@ boolean P_CrossSubsector (int num)
     fixed_t		opentop;
     fixed_t		openbottom;
     divline_t		divl;
-    vertex_t*		v1;
-    vertex_t*		v2;
+    doom_vertex_t*		v1;
+    doom_vertex_t*		v2;
     fixed_t		frac;
     fixed_t		slope;
 	
