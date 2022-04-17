@@ -365,6 +365,7 @@ void M_LoadDefaults (void)
     else
 	defaultfile = basedefault;
     
+#ifndef NAOMI
     // read the file in, overriding any set defaults
     f = fopen (defaultfile, "r");
     if (f)
@@ -401,6 +402,7 @@ void M_LoadDefaults (void)
 	}
 	fclose (f);
     }
+#endif
 }
 
 
