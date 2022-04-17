@@ -239,7 +239,7 @@ default_t	defaults[] =
     {"show_messages",&showMessages, 1},
     
 
-#ifdef NORMALUNIX
+#ifdef NAOMI
     {"key_right",&key_right, KEY_RIGHTARROW},
     {"key_left",&key_left, KEY_LEFTARROW},
     {"key_up",&key_up, KEY_UPARROW},
@@ -285,6 +285,7 @@ default_t	defaults[] =
 
     {"usegamma",&usegamma, 0},
 
+#ifndef NAOMI
     {"chatmacro0", (int *) &chat_macros[0], (int64_t) HUSTR_CHATMACRO0 },
     {"chatmacro1", (int *) &chat_macros[1], (int64_t) HUSTR_CHATMACRO1 },
     {"chatmacro2", (int *) &chat_macros[2], (int64_t) HUSTR_CHATMACRO2 },
@@ -295,6 +296,7 @@ default_t	defaults[] =
     {"chatmacro7", (int *) &chat_macros[7], (int64_t) HUSTR_CHATMACRO7 },
     {"chatmacro8", (int *) &chat_macros[8], (int64_t) HUSTR_CHATMACRO8 },
     {"chatmacro9", (int *) &chat_macros[9], (int64_t) HUSTR_CHATMACRO9 }
+#endif
 
 };
 
@@ -397,7 +399,6 @@ void M_LoadDefaults (void)
 		    }
 	    }
 	}
-		
 	fclose (f);
     }
 }

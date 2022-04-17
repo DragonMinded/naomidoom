@@ -126,6 +126,7 @@ void I_Quit (void)
     exit(0);
 }
 
+#ifndef NAOMI
 void I_WaitVBL(int count)
 {
 #ifdef SGI
@@ -138,6 +139,7 @@ void I_WaitVBL(int count)
 #endif
 #endif
 }
+#endif
 
 void I_BeginRead(void)
 {

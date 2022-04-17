@@ -31,7 +31,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.8 1997/02/03 22:45:09 b1 Exp $";
 #define	FGCOLOR		8
 
 
-#ifdef NORMALUNIX
+#ifdef NAOMI
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -104,7 +104,7 @@ boolean         fastparm;	// checkparm of -fast
 
 boolean         drone;
 
-boolean		singletics = false; // debug flag to cancel adaptiveness
+boolean		singletics = true; // debug flag to cancel adaptiveness
 
 
 
@@ -399,15 +399,17 @@ void D_DoomLoop (void)
 	// Update display, next frame, with current state.
 	D_Display ();
 
-//#ifndef SNDSERV
-//    // Sound mixing for the buffer is snychronous.
-//    I_UpdateSound();
-//#endif
-//    // Synchronous sound output is explicitly called.
-//#ifndef SNDINTR
-//    // Update sound output.
-//    I_SubmitSound();
-//#endif
+#if 0
+#ifndef SNDSERV
+    // Sound mixing for the buffer is snychronous.
+    I_UpdateSound();
+#endif
+    // Synchronous sound output is explicitly called.
+#ifndef SNDINTR
+    // Update sound output.
+    I_SubmitSound();
+#endif
+#endif
     }
 }
 
@@ -577,12 +579,9 @@ void IdentifyVersion (void)
     char*	plutoniawad;
     char*	tntwad;
 
-#ifdef NORMALUNIX
-    char *home;
+#ifdef NAOMI
     char *doomwaddir;
-    doomwaddir = getenv("DOOMWADDIR");
-    if (!doomwaddir)
-	doomwaddir = ".";
+	doomwaddir = "rom:/";
 
     // Commercial.
     doom2wad = malloc(strlen(doomwaddir)+1+9+1);
@@ -613,10 +612,7 @@ void IdentifyVersion (void)
     doom2fwad = malloc(strlen(doomwaddir)+1+10+1);
     sprintf(doom2fwad, "%s/doom2f.wad", doomwaddir);
 
-    home = getenv("HOME");
-    if (!home)
-      I_Error("Please set $HOME to your home directory");
-    sprintf(basedefault, "%s/Library/Application support/", home);
+    strcpy(basedefault, "rom://default.cfg");
 #endif
 
     if (M_CheckParm ("-shdev"))
@@ -807,7 +803,9 @@ void D_DoomMain (void)
 	
     IdentifyVersion ();
 	
+#ifndef NAOMI
     setbuf (stdout, NULL);
+#endif
     modifiedgame = false;
 	
     nomonsters = M_CheckParm ("-nomonsters");
@@ -1011,7 +1009,7 @@ void D_DoomMain (void)
 	}
 	autostart = true;
     }
-    
+
     // init subsystems
     printf ("V_Init: allocate screens.\n");
     V_Init ();
@@ -1161,7 +1159,7 @@ void D_DoomMain (void)
 	    sprintf(file, SAVEGAMENAME"%c.dsg",myargv[p+1][0]);
 	G_LoadGame (file);
     }
-	
+
 
     if ( gameaction != ga_loadgame )
     {

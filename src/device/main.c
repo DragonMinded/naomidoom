@@ -1,51 +1,52 @@
 #include <stdio.h>
-#include <termios.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <naomi/romfs.h>
+#include "../d_main.h"
+#include "../m_argv.h"
 
-#include "doomdef.h"
-#include "m_argv.h"
-#include "d_main.h"
-
-int main(int argc, const char** argv)
+int main()
 {
-    myargc = argc;
-    myargv = argv;
+    // Set up arguments.
+    myargc = 1;
+    myargv = malloc(sizeof (myargv[0]) * myargc);
+    myargv[0] = strdup("doom.bin");
 
-    // struct termios initial_settings, new_settings;
-    // tcgetattr(0,&initial_settings);
+    // Init our filesystem.
+    romfs_init_default();
 
-    // new_settings = initial_settings;
-    // new_settings.c_lflag &= ~ICANON;
-    // new_settings.c_lflag &= ~ECHO;
-    // new_settings.c_lflag &= ~ISIG;
-    // new_settings.c_cc[VMIN] = 0;
-    // new_settings.c_cc[VTIME] = 0;
-
-    // tcsetattr(0, TCSANOW, &new_settings);
-
+    // Off we go!
     D_DoomMain();
-
-    // tcsetattr(0, TCSANOW, &initial_settings);
 
     return 0;
 }
 
 void I_StartTic (void)
 {
-    // event_t event = {0,0,0,0};
-    // char key = getchar();
-    // if (key != EOF)
-    // {
-    //          if (key == 'a') key = KEY_LEFTARROW;
-    //     else if (key == 'd') key = KEY_RIGHTARROW;
-    //     else if (key == 'w') key = KEY_UPARROW;
-    //     else if (key == 's') key = KEY_DOWNARROW;
+    // Empty
+}
 
-    //     event.type = ev_keydown;
-    //     event.data1 = key;
-    //     D_PostEvent(&event);
+void mkdir(const char *path, int perm)
+{
+    // Empty
+}
 
-    //     event.type = ev_keyup;
-    //     event.data1 = key;
-    //     D_PostEvent(&event);
-    // }
+int access(const char *path, int axx)
+{
+    if (axx == R_OK)
+    {
+        FILE *fp = fopen(path, "rb");
+        if (fp)
+        {
+            fclose(fp);
+            return 0;
+        }
+
+        return EACCES;
+    }
+
+    // Empty
+    return EACCES;
 }

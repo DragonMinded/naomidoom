@@ -1,4 +1,4 @@
-#include "i_sound.h"
+#include "../i_sound.h"
 
 
 void I_InitMusic(void)

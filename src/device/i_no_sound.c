@@ -1,4 +1,4 @@
-#include "i_sound.h"
+#include "../i_sound.h"
 
 
 // Init at program start...

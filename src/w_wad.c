@@ -26,7 +26,7 @@ static const char
 rcsid[] = "$Id: w_wad.c,v 1.5 1997/02/03 16:47:57 b1 Exp $";
 
 
-#ifdef NORMALUNIX
+#ifdef NAOMI
 #include <ctype.h>
 #include <sys/types.h>
 #include <string.h>
@@ -66,10 +66,12 @@ void**			lumpcache;
 
 #define strcmpi	strcasecmp
 
+#ifndef NAOMI
 void strupr (char* s)
 {
     while (*s) { *s = toupper(*s); s++; }
 }
+#endif
 
 int filelength (int handle) 
 { 
