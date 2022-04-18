@@ -104,7 +104,7 @@ boolean         fastparm;	// checkparm of -fast
 
 boolean         drone;
 
-boolean		singletics = true; // debug flag to cancel adaptiveness
+boolean		singletics = false; // debug flag to cancel adaptiveness
 
 
 

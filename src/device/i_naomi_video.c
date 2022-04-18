@@ -43,9 +43,9 @@ void I_StartFrame (void)
     // Empty??
 }
 
-void I_WaitVBL (void)
+void I_WaitVBL (int count)
 {
-    // Empty??
+    thread_sleep (count * (1000000/70) );
 }
 
 // Takes full 8 bit values.
