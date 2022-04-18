@@ -6,13 +6,35 @@
 #include <naomi/color.h>
 #include <naomi/console.h>
 #include <naomi/ta.h>
+#include <naomi/thread.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
 
+static uint32_t video_thread;
 static texture_description_t *outtex;
 static uint8_t *tmptex;
-float xscale;
-float yscale;
+static float xscale;
+static float yscale;
+
+void * video(void * param)
+{
+    // Just display in a loop.
+    while( 1 )
+    {
+        ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
+
+        // Now, request to draw the texture, making sure to scale it properly
+        ta_commit_begin();
+        sprite_draw_scaled(0, 0, xscale, yscale, outtex);
+        ta_commit_end();
+
+        // Now, ask the TA to scale it for us
+        ta_render();
+
+        // Now, display it on the next vblank
+        video_display_on_vblank();
+    }
+}
 
 void I_InitGraphics (void)
 {
@@ -31,10 +53,17 @@ void I_InitGraphics (void)
     // Calcualte the scaling factors.
     xscale = (float)video_width() / (float)SCREENWIDTH;
     yscale = (float)video_height() / (float)SCREENHEIGHT;
+
+    // Start video thread.
+    video_thread = thread_create("video", video, NULL);
+    thread_priority(video_thread, 1);
+    thread_start(video_thread);
 }
 
 void I_ShutdownGraphics(void)
 {
+    thread_stop(video_thread);
+    thread_destroy(video_thread);
     video_free();
 }
 
@@ -45,7 +74,8 @@ void I_StartFrame (void)
 
 void I_WaitVBL (int count)
 {
-    thread_sleep (count * (1000000/70) );
+    thread_wait_vblank_out();
+    thread_yield();
 }
 
 // Takes full 8 bit values.
@@ -81,19 +111,6 @@ void I_FinishUpdate (void)
     {
         memcpy(&tmptex[gy * outtex->width], screens[0] + (gy * SCREENWIDTH), SCREENWIDTH);
     }
-
-    ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
-
-    // Now, request to draw the texture, making sure to scale it properly
-    ta_commit_begin();
-    sprite_draw_scaled(0, 0, xscale, yscale, outtex);
-    ta_commit_end();
-
-    // Now, ask the TA to scale it for us
-    ta_render();
-
-    // Now, display it on the next vblank
-    video_display_on_vblank();
 }
 
 void I_ReadScreen (byte* scr)
