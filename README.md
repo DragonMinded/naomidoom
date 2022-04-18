@@ -7,7 +7,7 @@ to add a WAD file to the `romfs/` directory. Make sure the WAD file is all lower
 
 ## Current Issues
 
-* There is currently no input.
+* The inputs are currently not configurable at all.
 * There is currently no sound or music.
 * After the demo attract loop the game will crash, rebooting the Naomi for some reason.
 * Demo plays back far too quickly compared to the PC release.

@@ -7,8 +7,10 @@
 #include <naomi/console.h>
 #include <naomi/ta.h>
 #include <naomi/thread.h>
+#include <naomi/maple.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
+#include "../d_event.h"
 
 static uint32_t video_thread;
 static texture_description_t *outtex;
@@ -67,9 +69,19 @@ void I_ShutdownGraphics(void)
     video_free();
 }
 
+void D_PostEvent(event_t* ev);
+
+void I_SendInput(evtype_t type, int data)
+{
+    event_t event;
+    event.type = type;
+    event.data1 = data;
+    D_PostEvent(&event);
+}
+
 void I_StartFrame (void)
 {
-    // Empty??
+    // Empty
 }
 
 void I_WaitVBL (int count)
@@ -110,6 +122,83 @@ void I_FinishUpdate (void)
     for (int gy = 0; gy < SCREENHEIGHT; gy++)
     {
         memcpy(&tmptex[gy * outtex->width], screens[0] + (gy * SCREENWIDTH), SCREENWIDTH);
+    }
+
+    // This seems like a good place to read key inputs.
+    maple_poll_buttons();
+    jvs_buttons_t pressed = maple_buttons_pressed();
+    jvs_buttons_t released = maple_buttons_released();
+
+    if (pressed.player1.start)
+    {
+        I_SendInput(ev_keydown, KEY_ENTER);
+    }
+    if (released.player1.start)
+    {
+        I_SendInput(ev_keyup, KEY_ENTER);
+    }
+
+    if (pressed.player1.left)
+    {
+        I_SendInput(ev_keydown, KEY_LEFTARROW);
+    }
+    if (released.player1.left)
+    {
+        I_SendInput(ev_keyup, KEY_LEFTARROW);
+    }
+
+    if (pressed.player1.right)
+    {
+        I_SendInput(ev_keydown, KEY_RIGHTARROW);
+    }
+    if (released.player1.right)
+    {
+        I_SendInput(ev_keyup, KEY_RIGHTARROW);
+    }
+
+    if (pressed.player1.up)
+    {
+        I_SendInput(ev_keydown, KEY_UPARROW);
+    }
+    if (released.player1.up)
+    {
+        I_SendInput(ev_keyup, KEY_UPARROW);
+    }
+
+    if (pressed.player1.down)
+    {
+        I_SendInput(ev_keydown, KEY_DOWNARROW);
+    }
+    if (released.player1.down)
+    {
+        I_SendInput(ev_keyup, KEY_DOWNARROW);
+    }
+
+    if (pressed.player1.button1)
+    {
+        I_SendInput(ev_keydown, KEY_RCTRL);
+    }
+    if (released.player1.button1)
+    {
+        I_SendInput(ev_keyup, KEY_RCTRL);
+    }
+
+    if (pressed.player1.button2)
+    {
+        I_SendInput(ev_keydown, ' ');
+    }
+    if (released.player1.button2)
+    {
+        I_SendInput(ev_keyup, ' ');
+    }
+
+    if (pressed.player1.button3)
+    {
+        I_SendInput(ev_keydown, KEY_RALT);
+    }
+    if (released.player1.button3)
+    {
+        I_SendInput(ev_keyup, KEY_RALT);
     }
 }
 

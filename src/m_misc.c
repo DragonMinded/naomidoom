@@ -265,7 +265,11 @@ default_t	defaults[] =
     {"mousetype", (int*)&mousetype, (int)"microsoft"},
 #endif
 
+#ifdef NAOMI
+    {"use_mouse",&usemouse, 0},
+#else
     {"use_mouse",&usemouse, 1},
+#endif
     {"mouseb_fire",&mousebfire,0},
     {"mouseb_strafe",&mousebstrafe,1},
     {"mouseb_forward",&mousebforward,2},
