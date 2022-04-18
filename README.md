@@ -1,4 +1,4 @@
-# Doom for Sega NAomi
+# Doom for Sega Naomi
 
 This is a port of the original Doom source code for the Sega Naomi platform. It is based on the work of
 Kristoffer Andersen who got Doom ported to a framebuffer. Currently there is no input or sound, and after
