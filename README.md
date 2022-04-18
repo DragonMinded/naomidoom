@@ -1,7 +1,10 @@
-# Doom for Linux Frambuffer
+# Doom for Sega NAomi
 
-This port of the original Doom source code targets Linux Framebuffer, without any intermediate abstraction layer (like SDL).
+This is a port of the original Doom source code for the Sega Naomi platform. It is based on the work of
+Kristoffer Andersen who got Doom ported to a framebuffer. Currently there is no input or sound, and after
+the demo attract loop it will crash and reboot the Naomi for some reason. If you want to compile it, you
+will need to first set up the libnaomi toolchain from https://github.com/DragonMinded/libnaomi and you will
+also need to add a WAD file to the `romfs/` directory. Make sure the WAD file is all lowercase or it will
+not be found!
 
-There is no keyboard input, sound or music - you can only watch the demo screen running in the framebuffer. Further, no scaling is implemented - resolution is the original Doom screen resolution.
-
-This port depends only on *stdlib*.
+Check out the original port here: https://github.com/stoffera/fbdoom
