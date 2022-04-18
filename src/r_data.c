@@ -527,9 +527,15 @@ void R_InitTextures (void)
 		      + sizeof(texpatch_t)*(SHORT(mtexture->patchcount)-1),
 		      PU_STATIC, 0);
 	
+#ifdef NAOMI
+    memcpy(&texture->width, &mtexture->width, sizeof(mtexture->width));
+    memcpy(&texture->height, &mtexture->height, sizeof(mtexture->height));
+    memcpy(&texture->patchcount, &mtexture->patchcount, sizeof(mtexture->patchcount));
+#else
 	texture->width = SHORT(mtexture->width);
 	texture->height = SHORT(mtexture->height);
 	texture->patchcount = SHORT(mtexture->patchcount);
+#endif
 
 	memcpy (texture->name, mtexture->name, sizeof(texture->name));
 	mpatch = &mtexture->patches[0];

@@ -367,6 +367,10 @@ void NetUpdate (void)
     int				i,j;
     int				realstart;
     int				gameticdiv;
+
+#ifdef NAOMI
+    return;
+#endif
     
     // check time
     nowtime = I_GetTime ()/ticdup;
@@ -560,6 +564,7 @@ void D_CheckNetGame (void)
     }
 
 #ifdef NAOMI
+    ticdup = 1;
     return;
 #endif
 
