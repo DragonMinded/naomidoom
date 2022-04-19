@@ -368,10 +368,6 @@ void NetUpdate (void)
     int				realstart;
     int				gameticdiv;
 
-#ifdef NAOMI
-    return;
-#endif
-    
     // check time
     nowtime = I_GetTime ()/ticdup;
     newtics = nowtime - gametime;
@@ -562,11 +558,6 @@ void D_CheckNetGame (void)
 	remoteresend[i] = false;	// set when local needs tics
 	resendto[i] = 0;		// which tic to start sending
     }
-
-#ifdef NAOMI
-    ticdup = 1;
-    return;
-#endif
 
     // I_InitNetwork sets doomcom and netgame
     I_InitNetwork ();

@@ -9,7 +9,7 @@ all: doom.bin
 # missing missing `build/naomi.bin' target, so make sure all of
 # these files exist.
 SRCS = $(wildcard src/*.c)
-SRCS += src/device/main.c src/device/i_naomi_video.c src/device/i_no_net.c src/device/i_no_sound.c src/device/i_no_music.c
+SRCS += src/device/main.c src/device/i_naomi_video.c src/device/i_naomi_sound.c src/device/i_naomi_music.c
 
 # Compile "normal linux" as per the forked repo.
 FLAGS = -DNAOMI=1

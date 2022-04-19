@@ -23,18 +23,21 @@
 static const char
 rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 
-#ifdef ENABLE_NETWORKING
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
+#ifndef NAOMI
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 #include <errno.h>
 #include <unistd.h>
+#ifndef NAOMI
 #include <netdb.h>
 #include <sys/ioctl.h>
+#endif
 
 #include "i_system.h"
 #include "d_event.h"
@@ -74,6 +77,9 @@ boolean NetListen (void);
 // NETWORKING
 //
 
+#ifdef NAOMI
+int	DOOMPORT =	12345;
+#else
 int	DOOMPORT =	(IPPORT_USERRESERVED +0x1d );
 
 int			sendsocket;
@@ -81,10 +87,12 @@ int			insocket;
 
 struct	sockaddr_in	sendaddress[MAXNETNODES];
 
+#endif
 void	(*netget) (void);
 void	(*netsend) (void);
 
 
+#ifndef NAOMI
 //
 // UDPsocket
 //
@@ -237,6 +245,7 @@ int GetLocalAddress (void)
 		
     return *(int *)hostentry->h_addr_list[0];
 }
+#endif
 
 
 //
@@ -291,6 +300,14 @@ void I_InitNetwork (void)
 	return;
     }
 
+#ifdef NAOMI
+	netgame = false;
+	doomcom->id = DOOMCOM_ID;
+	doomcom->numplayers = doomcom->numnodes = 1;
+	doomcom->deathmatch = false;
+	doomcom->consoleplayer = 0;
+	return;
+#else
     netsend = PacketSend;
     netget = PacketGet;
     netgame = true;
@@ -330,6 +347,7 @@ void I_InitNetwork (void)
     ioctl (insocket, FIONBIO, &trueval);
 
     sendsocket = UDPsocket ();
+#endif
 }
 
 
@@ -346,4 +364,3 @@ void I_NetCmd (void)
     else
 	I_Error ("Bad net cmd: %i\n",doomcom->command);
 }
-#endif
