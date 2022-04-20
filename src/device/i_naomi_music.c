@@ -5,8 +5,8 @@
 #include "../i_sound.h"
 
 #define INVALID_HANDLE -1
-#define BUFSIZE 8192
-#define SAMPLERATE 44100
+#define BUFSIZE 4096
+#define SAMPLERATE 22050
 
 typedef struct
 {
@@ -30,7 +30,7 @@ typedef struct
 } play_instructions_t;
 
 static int m_initialized = 0;
-static int m_volume = 127;
+static volatile int m_volume = 127;
 
 static registered_music_t *reglist = 0;
 static int reglist_count = 0;
@@ -69,6 +69,9 @@ void *audiothread_music(void *param)
     mid_song_set_volume(song, m_volume);
     mid_song_start(song);
 
+    int sleep_us = (int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE));
+    int volume = m_volume;
+
     audio_register_ringbuffer(AUDIO_FORMAT_16BIT, SAMPLERATE, BUFSIZE);
 
     while (inst->exit == 0)
@@ -84,7 +87,7 @@ void *audiothread_music(void *param)
                 while (inst->pause != 0 && inst->exit == 0)
                 {
                     // Sleep for an arbitrary amount and check again.
-                    thread_sleep((int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE)));
+                    thread_sleep(sleep_us);
                 }
 
                 if (inst->exit == 0)
@@ -103,10 +106,14 @@ void *audiothread_music(void *param)
 
                         // Sleep for the time it takes to play half our buffer so we can wake up and
                         // fill it again.
-                        thread_sleep((int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE)));
+                        thread_sleep(sleep_us);
 
                         // Allow volume changes.
-                        mid_song_set_volume(song, m_volume);
+                        if (volume != m_volume)
+                        {
+                            volume = m_volume;
+                            mid_song_set_volume(song, volume);
+                        }
                     }
                     else
                     {

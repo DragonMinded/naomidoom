@@ -73,8 +73,11 @@ void I_StartFrame (void)
 
 void I_WaitVBL (int count)
 {
-    thread_wait_vblank_out();
-    thread_yield();
+    for (int i = 0; i < count; i++)
+    {
+        thread_wait_vblank_out();
+        thread_yield();
+    }
 }
 
 // Takes full 8 bit values.
