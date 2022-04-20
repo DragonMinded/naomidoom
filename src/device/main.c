@@ -20,6 +20,9 @@ int main()
     // Init our filesystem.
     romfs_init_default();
 
+    // Init audio subsystem.
+    audio_init();
+
     // Off we go!
     D_DoomMain();
 

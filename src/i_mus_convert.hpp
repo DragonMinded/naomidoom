@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 extern "C" {
-    bool convertToMidi(void *musData, void **midiOutput);
+    int convertToMidi(void *musData, void **midiOutput, int *midiSize);
 }
 
 

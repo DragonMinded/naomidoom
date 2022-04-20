@@ -47,7 +47,10 @@
 #include <stdint.h>			// for mingw
 #endif
 
-//#include "m_alloc.h"
+#ifdef NAOMI
+#define M_Malloc malloc
+#define M_Free free
+#endif
 
 template<typename T> class TIterator
 {

@@ -9,13 +9,17 @@
 #include "i_mus_convert.hpp"
 #include "mus2midi.h"
 
-bool convertToMidi(void *musData, void **midiOutput) {
+#ifdef NAOMI
+extern "C" {
+#endif
+
+int convertToMidi(void *musData, void **midiOutput, int *sizeOutput) {
     MUSHeader *header = (MUSHeader*) musData;
     
     TArray<BYTE> midiData;
     bool success = ProduceMIDI((BYTE*)musData, header->SongStart + header->SongLen, midiData);
     
-    if (!success) return success;
+    if (!success) return 0;
     
     int bytes = midiData.Size();
     *midiOutput = malloc(bytes);
@@ -24,5 +28,10 @@ bool convertToMidi(void *musData, void **midiOutput) {
        byteData[i] = midiData[i];
     }
     
-    return success;
+    *sizeOutput = bytes;
+    return 1;
 }
+
+#ifdef NAOMI
+}
+#endif

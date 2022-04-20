@@ -9,6 +9,7 @@ all: doom.bin
 # missing missing `build/naomi.bin' target, so make sure all of
 # these files exist.
 SRCS = $(wildcard src/*.c)
+SRCS += src/mus2midi.cpp src/i_mus_convert.cpp
 SRCS += src/device/main.c src/device/i_naomi_video.c src/device/i_naomi_sound.c src/device/i_naomi_music.c
 
 # Compile "normal linux" as per the forked repo.
@@ -18,7 +19,7 @@ FLAGS = -DNAOMI=1
 CSTD = gnu99
 
 # We are using the add-on sprite library for scaled screen draw.
-LIBS += -lnaomisprite
+LIBS += -lnaomisprite -ltimidity
 
 # We want a different serial to make this unique.
 SERIAL = BDM0
