@@ -7,13 +7,13 @@ to add a WAD file to the `romfs/` directory. Make sure the WAD file is all lower
 
 ## Current Issues
 
-* The inputs are currently not configurable at all and are missing some important mappings.
-* There is currently no sound effects.
-* After the demo attract loop the game will crash, rebooting the Naomi for some reason.
-* Selecting "Read This" will crash, rebooting the Naomi for some reason.
-* There is no way to exit back out of the config menu.
+* The inputs are currently not configurable at all and are missing some important mappings (can't pull up automap, can't change weapon).
+* There are currently no sound effects.
+* After the demo attract loop the game will crash, rebooting the Naomi.
+* Selecting "Read This" will crash, rebooting the Naomi.
+* There is no way to exit back out of the config menu once entered.
 * Demo plays back far too quickly compared to the PC release.
-* WAD file searching should be case-insensitive.
+* WAD file searching to determine game mode should be case-insensitive.
 
 ## Acknowledgements
 
