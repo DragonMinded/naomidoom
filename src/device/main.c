@@ -5,6 +5,7 @@
 #include <string.h>
 #include <naomi/romfs.h>
 #include <naomi/maple.h>
+#include <naomi/audio.h>
 #include "../doomdef.h"
 #include "../d_main.h"
 #include "../m_argv.h"
