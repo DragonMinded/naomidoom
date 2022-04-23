@@ -6,10 +6,31 @@
 #include <naomi/romfs.h>
 #include <naomi/maple.h>
 #include <naomi/audio.h>
+#include <naomi/video.h>
+#include <naomi/console.h>
 #include "../doomdef.h"
 #include "../d_main.h"
 #include "../m_argv.h"
 #include "../d_event.h"
+
+void _draw_loading_screen()
+{
+    extern unsigned int loading_png_width;
+    extern unsigned int loading_png_height;
+    extern void *loading_png_data;
+
+    // Display the graphic.
+    video_draw_sprite(
+        (video_width() - loading_png_width) / 2,
+        (video_height() - loading_png_height) / 2,
+        loading_png_width,
+        loading_png_height,
+        loading_png_data
+    );
+
+    // Flip the screens so it is visible.
+    video_display_on_vblank();
+}
 
 int main()
 {
@@ -17,6 +38,21 @@ int main()
     myargc = 1;
     myargv = malloc(sizeof (myargv[0]) * myargc);
     myargv[0] = strdup("doom.bin");
+
+    // First, initialize a simple screen.
+    video_init(VIDEO_COLOR_1555);
+
+    // Then, enable console capture but disable console display if
+    // we are not in debug mode.
+    console_init(16);
+
+#ifndef NAOMI_DEBUG
+    // Hide the debug console, we don't want to see it!
+    console_set_visible(0);
+#endif
+
+    // Draw a loading screen so people know things are working.
+    _draw_loading_screen();
 
     // Init our filesystem.
     romfs_init_default();

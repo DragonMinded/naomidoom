@@ -11,6 +11,7 @@ all: doom.bin
 SRCS = $(wildcard src/*.c)
 SRCS += src/mus2midi.cpp src/i_mus_convert.cpp
 SRCS += src/device/main.c src/device/i_naomi_video.c src/device/i_naomi_sound.c src/device/i_naomi_music.c
+SRCS += assets/loading.png
 
 # Compile "normal linux" as per the forked repo.
 FLAGS = -DNAOMI=1
@@ -26,6 +27,12 @@ SERIAL = BDM0
 
 # Pick up base makefile rules common to all examples.
 include ${NAOMI_BASE}/tools/Makefile.base
+
+# Provide a rule for converting our provided graphics.
+build/%.o: %.png ${IMG2C_FILE}
+	@mkdir -p $(dir $@)
+	${IMG2C} build/$<.c --mode RGBA1555 $<
+	${CC} -c build/$<.c -o $@
 
 # Provide a rule to build our ROM FS.
 build/romfs.bin: romfs/ ${ROMFSGEN_FILE}

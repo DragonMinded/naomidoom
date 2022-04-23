@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <naomi/video.h>
 #include <naomi/color.h>
-#include <naomi/console.h>
 #include <naomi/ta.h>
 #include <naomi/thread.h>
+#include <naomi/interrupt.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
 
@@ -14,13 +14,28 @@ static texture_description_t *outtex;
 static uint8_t *tmptex;
 static float xscale;
 static float yscale;
+static int pending_frame;
+
+int _test_and_set(int val)
+{
+    int old_val = pending_frame;
+    pending_frame = val;
+    return old_val;
+}
 
 void * video(void * param)
 {
+   int has_pending;
+
     // Just display in a loop.
     while( 1 )
     {
-        ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
+        // Only draw to the texture if we got an update.
+        ATOMIC(has_pending = _test_and_set(0));
+        if (has_pending)
+        {
+            ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
+        }
 
         // Now, request to draw the texture, making sure to scale it properly
         ta_commit_begin();
@@ -37,21 +52,18 @@ void * video(void * param)
 
 void I_InitGraphics (void)
 {
-    // First, initialize a simple screen.
-    video_init(VIDEO_COLOR_1555);
-
-    // Then, enable console capture but disable console display.
-    console_init(16);
-    console_set_visible(0);
-
-    // Now, create a texture that we can use to render to to use hardware stretching.
+    // Create a texture that we can use to render to to use hardware stretching.
     int uvsize = ta_round_uvsize(SCREENWIDTH > SCREENHEIGHT ? SCREENWIDTH : SCREENHEIGHT);
     outtex = ta_texture_desc_malloc_paletted(uvsize, NULL, TA_PALETTE_CLUT8, 0);
     tmptex = malloc(sizeof(uint8_t) * outtex->width * outtex->height);
+    memset(tmptex, 0, sizeof(uint8_t) * outtex->width * outtex->height);
 
-    // Calcualte the scaling factors.
+    // Calculate the scaling factors.
     xscale = (float)video_width() / (float)SCREENWIDTH;
     yscale = (float)video_height() / (float)SCREENHEIGHT;
+
+    // Mark that we don't have a frame.
+    pending_frame = 0;
 
     // Start video thread.
     video_thread = thread_create("video", video, NULL);
@@ -113,6 +125,9 @@ void I_FinishUpdate (void)
     {
         memcpy(&tmptex[gy * outtex->width], screens[0] + (gy * SCREENWIDTH), SCREENWIDTH);
     }
+
+    // Inform system that we have a new frame.
+    ATOMIC(_test_and_set(1));
 }
 
 void I_ReadScreen (byte* scr)
