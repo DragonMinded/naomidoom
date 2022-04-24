@@ -9,10 +9,9 @@ to add a WAD file to the `romfs/` directory. Make sure the WAD file is all lower
 
 * The inputs are currently not configurable at all and are missing some important mappings (can't pull up automap, can't change weapon, can't sprint).
 * There are currently no sound effects.
-* After the demo attract loop the game will crash, rebooting the Naomi.
-* Selecting "Read This" will crash, rebooting the Naomi.
 * There is no way to exit back out of the config menu once entered.
 * WAD file searching to determine game mode should be case-insensitive.
+* Doom Ultimate must be named "doomu.wad" or the game will crash with a missing "HELP2" screen.
 
 ## Acknowledgements
 
