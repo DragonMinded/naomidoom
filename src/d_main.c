@@ -868,6 +868,13 @@ void D_DoomMain (void)
     else if (M_CheckParm ("-deathmatch"))
 	deathmatch = 1;
 
+#ifdef NAOMI
+	if (gamemode == registered)
+        // See if this is actually doom ultimate.
+        if (W_CheckNumForName("HELP2")<0)
+            gamemode = retail;
+#endif
+
     switch ( gamemode )
     {
       case retail:
@@ -1100,6 +1107,7 @@ void D_DoomMain (void)
 		    I_Error("\nThis is not the registered version.");
     }
     
+#ifndef NAOMI
     // Iff additonal PWAD files are used, print modified banner
     if (modifiedgame)
     {
@@ -1113,6 +1121,7 @@ void D_DoomMain (void)
 	    );
 	getchar ();
     }
+#endif
 	
 
     // Check and print which version is executed.
