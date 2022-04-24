@@ -66,7 +66,7 @@ void *audiothread_music(void *param)
     }
 
     uint32_t *buffer = malloc(BUFSIZE);
-    mid_song_set_volume(song, m_volume);
+    mid_song_set_volume(song, m_volume * 4);
     mid_song_start(song);
 
     int sleep_us = (int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE));
