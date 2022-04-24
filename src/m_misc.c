@@ -291,7 +291,7 @@ default_t	defaults[] =
 
 
 
-    {"usegamma",&usegamma, 0},
+    {"usegamma",&usegamma, 1},
 
 #ifndef NAOMI
     {"chatmacro0", (int *) &chat_macros[0], (int64_t) HUSTR_CHATMACRO0 },
