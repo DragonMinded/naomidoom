@@ -7,6 +7,7 @@
 #include <naomi/thread.h>
 #include <naomi/interrupt.h>
 #include <naomi/timer.h>
+#include <naomi/maple.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
 
@@ -15,25 +16,23 @@ static texture_description_t *outtex;
 static uint8_t *tmptex;
 static float xscale;
 static float yscale;
-static int pending_frame;
 static int doom_updates;
 
-int _test_and_set(int val)
-{
-    int old_val = pending_frame;
-    pending_frame = val;
-    return old_val;
-}
+// Shared with main.c
+extern int controls_needed;
+extern int controls_available;
 
 void * video(void * param)
 {
-    int has_pending;
+    int last_drawn_frame = -1;
+
 #ifdef NAOMI_DEBUG
     double video_thread_fps = 0.0;
     double video_thread_fps_debounced = 0.0;
     double doom_fps = 0.0;
     uint32_t elapsed = 0;
     int video_updates = 0;
+    int doom_last_reset = 0;
     task_scheduler_info_t sched;
 #endif
 
@@ -46,9 +45,9 @@ void * video(void * param)
 #endif
 
         // Only draw to the texture if we got an update.
-        ATOMIC(has_pending = _test_and_set(0));
-        if (has_pending)
+        if (last_drawn_frame != doom_updates)
         {
+            last_drawn_frame = doom_updates;
             ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
         }
 
@@ -70,6 +69,16 @@ void * video(void * param)
         // Now, display it on the next vblank
         video_display_on_vblank();
 
+        // Now, poll for buttons where it is safe.
+        ATOMIC({
+            if (controls_needed)
+            {
+                controls_needed = 0;
+                controls_available = 1;
+                maple_poll_buttons();
+            }
+        });
+
 #ifdef NAOMI_DEBUG
         // Calculate instantaneous FPS.
         uint32_t uspf = profile_end(fps);
@@ -81,8 +90,8 @@ void * video(void * param)
         {
             int frame_count;
             ATOMIC({
-                frame_count = doom_updates;
-                doom_updates = 0;
+                frame_count = (doom_updates - doom_last_reset);
+                doom_last_reset = doom_updates;
             });
 
             doom_fps = (double)frame_count * ((double)elapsed / 1000000.0);
@@ -109,8 +118,9 @@ void I_InitGraphics (void)
     yscale = (float)video_height() / (float)SCREENHEIGHT;
 
     // Mark that we don't have a frame.
-    pending_frame = 0;
     doom_updates = 0;
+    controls_needed = 1;
+    controls_available = 0;
 
     // Start video thread.
     video_thread = thread_create("video", video, NULL);
@@ -174,7 +184,6 @@ void I_FinishUpdate (void)
     }
 
     // Inform system that we have a new frame.
-    ATOMIC(_test_and_set(1));
     ATOMIC(doom_updates++);
 }
 

@@ -8,10 +8,14 @@
 #include <naomi/audio.h>
 #include <naomi/video.h>
 #include <naomi/console.h>
+#include <naomi/interrupt.h>
 #include "../doomdef.h"
 #include "../d_main.h"
 #include "../m_argv.h"
 #include "../d_event.h"
+
+int controls_available = 0;
+int controls_needed = 0;
 
 void _draw_loading_screen()
 {
@@ -79,81 +83,88 @@ void I_SendInput(evtype_t type, int data)
 void I_StartTic (void)
 {
     // This seems like a good place to read key inputs.
-    maple_poll_buttons();
-    jvs_buttons_t pressed = maple_buttons_pressed();
-    jvs_buttons_t released = maple_buttons_released();
+    ATOMIC({
+        if (controls_available)
+        {
+            controls_available = 0;
+            controls_needed = 1;
 
-    if (pressed.player1.start)
-    {
-        I_SendInput(ev_keydown, KEY_ENTER);
-    }
-    if (released.player1.start)
-    {
-        I_SendInput(ev_keyup, KEY_ENTER);
-    }
+            jvs_buttons_t pressed = maple_buttons_pressed();
+            jvs_buttons_t released = maple_buttons_released();
 
-    if (pressed.player1.left)
-    {
-        I_SendInput(ev_keydown, KEY_LEFTARROW);
-    }
-    if (released.player1.left)
-    {
-        I_SendInput(ev_keyup, KEY_LEFTARROW);
-    }
+            if (pressed.player1.start)
+            {
+                I_SendInput(ev_keydown, KEY_ENTER);
+            }
+            if (released.player1.start)
+            {
+                I_SendInput(ev_keyup, KEY_ENTER);
+            }
 
-    if (pressed.player1.right)
-    {
-        I_SendInput(ev_keydown, KEY_RIGHTARROW);
-    }
-    if (released.player1.right)
-    {
-        I_SendInput(ev_keyup, KEY_RIGHTARROW);
-    }
+            if (pressed.player1.left)
+            {
+                I_SendInput(ev_keydown, KEY_LEFTARROW);
+            }
+            if (released.player1.left)
+            {
+                I_SendInput(ev_keyup, KEY_LEFTARROW);
+            }
 
-    if (pressed.player1.up)
-    {
-        I_SendInput(ev_keydown, KEY_UPARROW);
-    }
-    if (released.player1.up)
-    {
-        I_SendInput(ev_keyup, KEY_UPARROW);
-    }
+            if (pressed.player1.right)
+            {
+                I_SendInput(ev_keydown, KEY_RIGHTARROW);
+            }
+            if (released.player1.right)
+            {
+                I_SendInput(ev_keyup, KEY_RIGHTARROW);
+            }
 
-    if (pressed.player1.down)
-    {
-        I_SendInput(ev_keydown, KEY_DOWNARROW);
-    }
-    if (released.player1.down)
-    {
-        I_SendInput(ev_keyup, KEY_DOWNARROW);
-    }
+            if (pressed.player1.up)
+            {
+                I_SendInput(ev_keydown, KEY_UPARROW);
+            }
+            if (released.player1.up)
+            {
+                I_SendInput(ev_keyup, KEY_UPARROW);
+            }
 
-    if (pressed.player1.button1)
-    {
-        I_SendInput(ev_keydown, KEY_RCTRL);
-    }
-    if (released.player1.button1)
-    {
-        I_SendInput(ev_keyup, KEY_RCTRL);
-    }
+            if (pressed.player1.down)
+            {
+                I_SendInput(ev_keydown, KEY_DOWNARROW);
+            }
+            if (released.player1.down)
+            {
+                I_SendInput(ev_keyup, KEY_DOWNARROW);
+            }
 
-    if (pressed.player1.button2)
-    {
-        I_SendInput(ev_keydown, ' ');
-    }
-    if (released.player1.button2)
-    {
-        I_SendInput(ev_keyup, ' ');
-    }
+            if (pressed.player1.button1)
+            {
+                I_SendInput(ev_keydown, KEY_RCTRL);
+            }
+            if (released.player1.button1)
+            {
+                I_SendInput(ev_keyup, KEY_RCTRL);
+            }
 
-    if (pressed.player1.button3)
-    {
-        I_SendInput(ev_keydown, KEY_RALT);
-    }
-    if (released.player1.button3)
-    {
-        I_SendInput(ev_keyup, KEY_RALT);
-    }
+            if (pressed.player1.button2)
+            {
+                I_SendInput(ev_keydown, ' ');
+            }
+            if (released.player1.button2)
+            {
+                I_SendInput(ev_keyup, ' ');
+            }
+
+            if (pressed.player1.button3)
+            {
+                I_SendInput(ev_keydown, KEY_RALT);
+            }
+            if (released.player1.button3)
+            {
+                I_SendInput(ev_keyup, KEY_RALT);
+            }
+        }
+    });
 }
 
 void mkdir(const char *path, int perm)
