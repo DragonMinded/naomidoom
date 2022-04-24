@@ -187,5 +187,9 @@ void I_Error (char *error, ...)
     D_QuitNetGame ();
     I_ShutdownGraphics();
     
+#ifdef NAOMI
+    I_DrawErrorScreen();
+#else
     exit(-1);
+#endif
 }

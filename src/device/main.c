@@ -9,6 +9,7 @@
 #include <naomi/video.h>
 #include <naomi/console.h>
 #include <naomi/interrupt.h>
+#include <naomi/posix.h>
 #include "../doomdef.h"
 #include "../d_main.h"
 #include "../m_argv.h"
@@ -16,6 +17,25 @@
 
 int controls_available = 0;
 int controls_needed = 0;
+
+#define STDERR_LEN 8192
+char stderr_buf[STDERR_LEN + 1];
+
+int _stderr_write(const char * const data, unsigned int len)
+{
+    uint32_t old_irq = irq_disable();
+    int location = strlen(stderr_buf);
+    int available = STDERR_LEN - location;
+
+    int amount = available >= len ? len : available;
+    memcpy(stderr_buf + location, data, amount);
+    stderr_buf[location + amount] = 0;
+
+    irq_restore(old_irq);
+    return amount;
+}
+
+stdio_t error_hook = { 0, 0, _stderr_write };
 
 void _draw_loading_screen()
 {
@@ -36,12 +56,32 @@ void _draw_loading_screen()
     video_display_on_vblank();
 }
 
+void I_DrawErrorScreen()
+{
+    // I know this isn't the best, since it locks out GDB, but it is what it is.
+    uint32_t old_irq = irq_disable();
+
+    video_init(VIDEO_COLOR_1555);
+    video_set_background_color(rgb(48, 48, 48));
+    video_draw_debug_text(16, 16, rgb(255, 255, 255), stderr_buf);
+    video_display_on_vblank();
+
+    while ( 1 ) { ; }
+
+    // We should never get here.
+    irq_restore(old_irq);
+}
+
 int main()
 {
     // Set up arguments.
     myargc = 1;
     myargv = malloc(sizeof (myargv[0]) * myargc);
     myargv[0] = strdup("doom.bin");
+
+    // Set up error handling.
+    memset(stderr_buf, 0, STDERR_LEN + 1);
+    hook_stdio_calls( &error_hook );
 
     // First, initialize a simple screen.
     video_init(VIDEO_COLOR_1555);
@@ -59,7 +99,12 @@ int main()
     _draw_loading_screen();
 
     // Init our filesystem.
-    romfs_init_default();
+    if (romfs_init_default() != 0)
+    {
+        fprintf(stderr, "Failed to init filesystem!");
+        fflush(stderr);
+        I_DrawErrorScreen();
+    }
 
     // Init audio subsystem.
     audio_init();
@@ -167,9 +212,10 @@ void I_StartTic (void)
     });
 }
 
-void mkdir(const char *path, int perm)
+int mkdir(const char *_path, mode_t __mode)
 {
     // Empty, we are read-only.
+    return EINVAL;
 }
 
 int access(const char *path, int axx)
