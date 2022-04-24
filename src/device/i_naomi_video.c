@@ -28,7 +28,6 @@ void * video(void * param)
 
 #ifdef NAOMI_DEBUG
     double video_thread_fps = 0.0;
-    double video_thread_fps_debounced = 0.0;
     double doom_fps = 0.0;
     uint32_t elapsed = 0;
     int video_updates = 0;
@@ -49,25 +48,29 @@ void * video(void * param)
         {
             last_drawn_frame = doom_updates;
             ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
-        }
 
-        // Now, request to draw the texture, making sure to scale it properly
-        ta_commit_begin();
-        sprite_draw_scaled(0, 0, xscale, yscale, outtex);
-        ta_commit_end();
+            // Now, request to draw the texture, making sure to scale it properly
+            ta_commit_begin();
+            sprite_draw_scaled(0, 0, xscale, yscale, outtex);
+            ta_commit_end();
 
-        // Now, ask the TA to scale it for us
-        ta_render();
+            // Now, ask the TA to scale it for us
+            ta_render();
 
 #ifdef NAOMI_DEBUG
-        video_draw_debug_text(400, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps_debounced, video_width(), video_height());
-        video_draw_debug_text(400, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
-        video_draw_debug_text(400, 40, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
-        video_updates ++;
+            video_draw_debug_text(400, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps, video_width(), video_height());
+            video_draw_debug_text(400, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
+            video_draw_debug_text(400, 40, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
+            video_updates ++;
 #endif
 
-        // Now, display it on the next vblank
-        video_display_on_vblank();
+            // Now, display it on the next vblank
+            video_display_on_vblank();
+        }
+        else
+        {
+            thread_wait_vblank_in();
+        }
 
         // Now, poll for buttons where it is safe.
         ATOMIC({
@@ -95,7 +98,6 @@ void * video(void * param)
             });
 
             doom_fps = (double)frame_count * ((double)elapsed / 1000000.0);
-            video_thread_fps_debounced = video_thread_fps;
             elapsed = 0;
         }
 
