@@ -280,7 +280,11 @@ default_t	defaults[] =
     {"joyb_use",&joybuse,3},
     {"joyb_speed",&joybspeed,2},
 
+#ifdef NAOMI
+    {"screenblocks",&screenblocks, 10},
+#else
     {"screenblocks",&screenblocks, 9},
+#endif
     {"detaillevel",&detailLevel, 0},
 
     {"snd_channels",&numChannels, 3},
