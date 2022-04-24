@@ -27,6 +27,7 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include <stdarg.h>
 #include <sys/time.h>
@@ -77,6 +78,7 @@ byte* I_ZoneBase (int*	size)
 {
     *size = mb_used*1024*1024;
     byte* memory = (byte *) malloc (*size);
+    assert(memory != 0);
     memset(memory, 0, *size);
     return memory;
 }
@@ -154,6 +156,7 @@ byte*	I_AllocLow(int length)
     byte*	mem;
         
     mem = (byte *)malloc (length);
+    assert(mem != 0);
     memset (mem,0,length);
     return mem;
 }
