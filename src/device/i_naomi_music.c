@@ -112,7 +112,7 @@ void *audiothread_music(void *param)
                         if (volume != m_volume)
                         {
                             volume = m_volume;
-                            mid_song_set_volume(song, volume);
+                            mid_song_set_volume(song, volume * 4);
                         }
                     }
                     else
