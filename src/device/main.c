@@ -146,6 +146,15 @@ void I_StartTic (void)
                 I_SendInput(ev_keyup, KEY_ENTER);
             }
 
+            if (pressed.player2.start)
+            {
+                I_SendInput(ev_keydown, KEY_ESCAPE);
+            }
+            if (released.player2.start)
+            {
+                I_SendInput(ev_keyup, KEY_ESCAPE);
+            }
+
             if (pressed.player1.left)
             {
                 I_SendInput(ev_keydown, KEY_LEFTARROW);
