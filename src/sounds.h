@@ -59,6 +59,11 @@ struct sfxinfo_struct
 
     // lump number of sfx
     int		lumpnum;		
+
+#ifdef NAOMI
+    // length of sfx in bytes
+    int     length;
+#endif
 };
 
 

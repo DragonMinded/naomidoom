@@ -7,6 +7,7 @@
 #define INVALID_HANDLE -1
 #define BUFSIZE 4096
 #define SAMPLERATE 22050
+#define VOLUME_MULT 2
 
 typedef struct
 {
@@ -66,7 +67,7 @@ void *audiothread_music(void *param)
     }
 
     uint32_t *buffer = malloc(BUFSIZE);
-    mid_song_set_volume(song, m_volume * 4);
+    mid_song_set_volume(song, m_volume * VOLUME_MULT);
     mid_song_start(song);
 
     int sleep_us = (int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE));
@@ -112,7 +113,7 @@ void *audiothread_music(void *param)
                         if (volume != m_volume)
                         {
                             volume = m_volume;
-                            mid_song_set_volume(song, volume * 4);
+                            mid_song_set_volume(song, volume * VOLUME_MULT);
                         }
                     }
                     else
