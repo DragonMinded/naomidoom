@@ -12,8 +12,8 @@
 #include "../v_video.h"
 
 static uint32_t video_thread;
-static texture_description_t *outtex;
-static uint8_t *tmptex;
+static texture_description_t *outtex[2];
+static int whichtex = 0;
 static float xscale;
 static float yscale;
 static int doom_updates;
@@ -46,12 +46,12 @@ void * video(void * param)
         // Only draw to the texture if we got an update.
         if (last_drawn_frame != doom_updates)
         {
+            // Remember that we did this.
             last_drawn_frame = doom_updates;
-            ta_texture_load(outtex->vram_location, outtex->width, 8, tmptex);
 
             // Now, request to draw the texture, making sure to scale it properly
             ta_commit_begin();
-            sprite_draw_scaled(0, 0, xscale, yscale, outtex);
+            sprite_draw_scaled(0, 0, xscale, yscale, outtex[whichtex]);
             ta_commit_end();
 
             // Now, ask the TA to scale it for us
@@ -111,9 +111,16 @@ void I_InitGraphics (void)
 {
     // Create a texture that we can use to render to to use hardware stretching.
     int uvsize = ta_round_uvsize(SCREENWIDTH > SCREENHEIGHT ? SCREENWIDTH : SCREENHEIGHT);
-    outtex = ta_texture_desc_malloc_paletted(uvsize, NULL, TA_PALETTE_CLUT8, 0);
-    tmptex = malloc(sizeof(uint8_t) * outtex->width * outtex->height);
-    memset(tmptex, 0, sizeof(uint8_t) * outtex->width * outtex->height);
+    outtex[0] = ta_texture_desc_malloc_paletted(uvsize, NULL, TA_PALETTE_CLUT8, 0);
+    outtex[1] = ta_texture_desc_malloc_paletted(uvsize, NULL, TA_PALETTE_CLUT8, 0);
+    whichtex = 0;
+
+    // Wipe the textures so we don't have garbage on them.
+    void *tmp = malloc(uvsize * uvsize);
+    memset(tmp, 0, uvsize * uvsize);
+    ta_texture_load(outtex[0]->vram_location, outtex[0]->width, 8, tmp);
+    ta_texture_load(outtex[1]->vram_location, outtex[1]->width, 8, tmp);
+    free(tmp);
 
     // Calculate the scaling factors.
     xscale = (float)video_width() / (float)SCREENWIDTH;
@@ -180,13 +187,22 @@ void I_UpdateNoBlit (void)
 void I_FinishUpdate (void)
 {
     // Form the LUT texture.
-    for (int gy = 0; gy < SCREENHEIGHT; gy++)
-    {
-        memcpy(&tmptex[gy * outtex->width], screens[0] + (gy * SCREENWIDTH), SCREENWIDTH);
-    }
+    ta_texture_load_sprite(
+        outtex[1 - whichtex]->vram_location,
+        outtex[1 - whichtex]->width,
+        8,
+        0,
+        0,
+        SCREENWIDTH,
+        SCREENHEIGHT,
+        screens[0]
+    );
 
     // Inform system that we have a new frame.
-    ATOMIC(doom_updates++);
+    ATOMIC({
+        doom_updates++;
+        whichtex = 1 - whichtex;
+    });
 }
 
 void I_ReadScreen (byte* scr)
