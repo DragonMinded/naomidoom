@@ -34,6 +34,7 @@ void * video(void * param)
     double doom_fps = 0.0;
     uint32_t elapsed = 0;
     int video_updates = 0;
+    task_scheduler_info_t sched;
 #endif
 
     // Just display in a loop.
@@ -62,6 +63,7 @@ void * video(void * param)
 #ifdef NAOMI_DEBUG
         video_draw_debug_text(400, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps_debounced, video_width(), video_height());
         video_draw_debug_text(400, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
+        video_draw_debug_text(400, 40, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
         video_updates ++;
 #endif
 
@@ -87,6 +89,9 @@ void * video(void * param)
             video_thread_fps_debounced = video_thread_fps;
             elapsed = 0;
         }
+
+        // Get task schduler info.
+        task_scheduler_info(&sched);
 #endif
     }
 }
