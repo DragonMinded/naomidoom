@@ -38,6 +38,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.8 1997/02/03 22:45:09 b1 Exp $";
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 #endif
 
 
@@ -580,8 +581,8 @@ void IdentifyVersion (void)
     char*	tntwad;
 
 #ifdef NAOMI
-    char *doomwaddir;
-	doomwaddir = "rom:/";
+	char *doomwaddir = "rom:/";
+    DIR *dir = opendir("rom://");
 
     // Commercial.
     doom2wad = malloc(strlen(doomwaddir)+1+9+1);
@@ -599,19 +600,69 @@ void IdentifyVersion (void)
     doom1wad = malloc(strlen(doomwaddir)+1+9+1);
     sprintf(doom1wad, "%s/doom1.wad", doomwaddir);
 
-     // Bug, dear Shawn.
-    // Insufficient malloc, caused spurious realloc errors.
+    // Plutonium.
     plutoniawad = malloc(strlen(doomwaddir)+1+/*9*/12+1);
     sprintf(plutoniawad, "%s/plutonia.wad", doomwaddir);
 
+    // TNT.
     tntwad = malloc(strlen(doomwaddir)+1+9+1);
     sprintf(tntwad, "%s/tnt.wad", doomwaddir);
-
 
     // French stuff.
     doom2fwad = malloc(strlen(doomwaddir)+1+10+1);
     sprintf(doom2fwad, "%s/doom2f.wad", doomwaddir);
 
+    while (1)
+    {
+        struct dirent* direntp = readdir(dir);
+        if (direntp == 0)
+        {
+            break;
+        }
+
+        if (direntp->d_type == DT_REG)
+        {
+            // Lowercase this file, to see if it is a wad we care about.
+            char fname[64];
+            strncpy(fname, direntp->d_name, 63);
+            fname[63] = 0;
+
+            strlwr(fname);
+
+            if (strcmp(fname, "doom2.wad") == 0)
+            {
+                strcpy(doom2wad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "doomu.wad") == 0)
+            {
+                strcpy(doomuwad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "doom.wad") == 0)
+            {
+                strcpy(doomwad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "doom1.wad") == 0)
+            {
+                strcpy(doom1wad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "plutonia.wad") == 0)
+            {
+                strcpy(plutoniawad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "tnt.wad") == 0)
+            {
+                strcpy(tntwad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+            else if (strcmp(fname, "doom2f.wad") == 0)
+            {
+                strcpy(doom2fwad + strlen(doomwaddir) + 1, direntp->d_name);
+            }
+        }
+    }
+
+    closedir(dir);
+
+    // We don't actually use this, but its fine to have here.
     strcpy(basedefault, "rom://default.cfg");
 #endif
 
