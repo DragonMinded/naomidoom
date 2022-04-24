@@ -17,6 +17,13 @@ to add a WAD file to the `romfs/` directory.
 ## Current Issues
 
 * The inputs are currently not configurable at all and are missing some important mappings (can't pull up automap, can't change weapon, can't sprint).
+* SFX are not directional nor do they update when you move around.
+* Load/Save game are completely untested.
+* Unsure what happens if you attempt to exit the game, don't do it.
+* Music will stutter if the game tries to "pause" it, instead of actually silencing it.
+* Sometimes there is garbage on the screen between the loading screen and the game splash screen.
+* Settings don't load/save from EEPROM like they should.
+* There is no test mode binary, so going into Naomi test mode just boots the game.
 
 ## Acknowledgements
 
