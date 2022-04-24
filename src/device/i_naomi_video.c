@@ -6,6 +6,7 @@
 #include <naomi/ta.h>
 #include <naomi/thread.h>
 #include <naomi/interrupt.h>
+#include <naomi/timer.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
 
@@ -15,6 +16,7 @@ static uint8_t *tmptex;
 static float xscale;
 static float yscale;
 static int pending_frame;
+static int doom_updates;
 
 int _test_and_set(int val)
 {
@@ -25,11 +27,23 @@ int _test_and_set(int val)
 
 void * video(void * param)
 {
-   int has_pending;
+    int has_pending;
+#ifdef NAOMI_DEBUG
+    double video_thread_fps = 0.0;
+    double video_thread_fps_debounced = 0.0;
+    double doom_fps = 0.0;
+    uint32_t elapsed = 0;
+    int video_updates = 0;
+#endif
 
     // Just display in a loop.
     while( 1 )
     {
+#ifdef NAOMI_DEBUG
+        // Calculate instantaneous video thread FPS, should hover around 60 FPS.
+        int fps = profile_start();
+#endif
+
         // Only draw to the texture if we got an update.
         ATOMIC(has_pending = _test_and_set(0));
         if (has_pending)
@@ -45,8 +59,35 @@ void * video(void * param)
         // Now, ask the TA to scale it for us
         ta_render();
 
+#ifdef NAOMI_DEBUG
+        video_draw_debug_text(400, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps_debounced, video_width(), video_height());
+        video_draw_debug_text(400, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
+        video_updates ++;
+#endif
+
         // Now, display it on the next vblank
         video_display_on_vblank();
+
+#ifdef NAOMI_DEBUG
+        // Calculate instantaneous FPS.
+        uint32_t uspf = profile_end(fps);
+        video_thread_fps = 1000000.0 / (double)uspf;
+
+        // Calculate DOOM and FPS based on requested screen updates.
+        elapsed += uspf;
+        if (elapsed >= 1000000)
+        {
+            int frame_count;
+            ATOMIC({
+                frame_count = doom_updates;
+                doom_updates = 0;
+            });
+
+            doom_fps = (double)frame_count * ((double)elapsed / 1000000.0);
+            video_thread_fps_debounced = video_thread_fps;
+            elapsed = 0;
+        }
+#endif
     }
 }
 
@@ -64,6 +105,7 @@ void I_InitGraphics (void)
 
     // Mark that we don't have a frame.
     pending_frame = 0;
+    doom_updates = 0;
 
     // Start video thread.
     video_thread = thread_create("video", video, NULL);
@@ -128,6 +170,7 @@ void I_FinishUpdate (void)
 
     // Inform system that we have a new frame.
     ATOMIC(_test_and_set(1));
+    ATOMIC(doom_updates++);
 }
 
 void I_ReadScreen (byte* scr)

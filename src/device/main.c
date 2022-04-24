@@ -46,7 +46,7 @@ int main()
     // we are not in debug mode.
     console_init(16);
 
-#ifndef NAOMI_DEBUG
+#ifndef NAOMI_CONSOLE
     // Hide the debug console, we don't want to see it!
     console_set_visible(0);
 #endif
