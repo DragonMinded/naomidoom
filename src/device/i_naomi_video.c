@@ -17,6 +17,7 @@ static int whichtex = 0;
 static float xscale;
 static float yscale;
 static int doom_updates;
+static int started = 0;
 
 // Shared with main.c
 extern int controls_needed;
@@ -25,6 +26,14 @@ extern int controls_available;
 void _disableAnyVideoUpdates()
 {
     thread_stop(video_thread);
+}
+
+void _enableAnyVideoUpdates()
+{
+    // Used to hide garbage on screen until the game
+    // starts playing any music, signifying to us that
+    // it has started running.
+    started = 1;
 }
 
 void * video(void * param)
@@ -49,7 +58,7 @@ void * video(void * param)
 #endif
 
         // Only draw to the texture if we got an update.
-        if (last_drawn_frame != doom_updates)
+        if (started == 2 && last_drawn_frame != doom_updates)
         {
             // Remember that we did this.
             last_drawn_frame = doom_updates;
@@ -202,6 +211,9 @@ void I_FinishUpdate (void)
         SCREENHEIGHT,
         screens[0]
     );
+
+    // We got audio, and we got an update finish.
+    if (started == 1) { started = 2; }
 
     // Inform system that we have a new frame.
     ATOMIC({

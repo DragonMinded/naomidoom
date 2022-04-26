@@ -277,6 +277,9 @@ int I_RegisterSong(void *data, const char *name)
     return new_handle;
 }
 
+// Forward definition from video system.
+void _enableAnyVideoUpdates();
+
 // Called by anything that wishes to start music.
 //  plays a song, and when the song is done,
 //  starts playing it again in an endless loop.
@@ -290,6 +293,9 @@ void I_PlaySong(int	handle, int	looping)
     {
         return;
     }
+
+    // Signal that we have life from the main game.
+    _enableAnyVideoUpdates();
 
     for (int i = 0; i < reglist_count; i++)
     {
