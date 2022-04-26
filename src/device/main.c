@@ -11,6 +11,7 @@
 #include <naomi/interrupt.h>
 #include <naomi/posix.h>
 #include <naomi/thread.h>
+#include <naomi/system.h>
 #include <sys/time.h>
 #include "../doomdef.h"
 #include "../doomstat.h"
@@ -117,6 +118,51 @@ int main()
     D_DoomMain();
 
     return 0;
+}
+
+int test()
+{
+    // Set up a test executable that currently only displays version info for now.
+    video_init(VIDEO_COLOR_1555);
+    video_set_background_color(rgb(0, 0, 0));
+
+    while ( 1 )
+    {
+        // First, poll the buttons and act accordingly.
+        maple_poll_buttons();
+        jvs_buttons_t buttons = maple_buttons_pressed();
+
+        if (buttons.psw1 || buttons.test)
+        {
+            // Request to go into system test mode.
+            enter_test_mode();
+        }
+
+        // Display build date and version information.
+        char *lines[] = {
+            "Doom for the Sega Naomi",
+            "Ported by DragonMinded",
+            "No settings here yet!",
+            "",
+            "Build date: xxxx-xx-xx",
+            "Release version: 1.0 alpha 1",
+            "",
+            "press [test] to exit",
+        };
+
+        int year = (BUILD_DATE / 10000);
+        int month = (BUILD_DATE - (year * 10000)) / 100;
+        int day = BUILD_DATE % 100;
+        sprintf(&lines[4][12], "%04d-%02d-%02d", year, month, day);
+
+        for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+        {
+            int len = strlen(lines[i]);
+            video_draw_debug_text((video_width() - 8 * len) / 2, 100 + (i * 10), rgb(255, 255, 255), lines[i]);
+        }
+
+        video_display_on_vblank();
+    }
 }
 
 // Max number of microseconds between forward taps to consider a sprint.
@@ -249,6 +295,12 @@ void I_StartTic (void)
 
             jvs_buttons_t pressed = maple_buttons_pressed();
             jvs_buttons_t released = maple_buttons_released();
+
+            if (pressed.psw1 || pressed.test)
+            {
+                // Request to go into system test mode.
+                enter_test_mode();
+            }
 
             // "Enter" keypress, mapped to 1P start.
             if (pressed.player1.start)
