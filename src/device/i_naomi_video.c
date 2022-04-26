@@ -22,6 +22,11 @@ static int doom_updates;
 extern int controls_needed;
 extern int controls_available;
 
+void _disableAnyVideoUpdates()
+{
+    thread_stop(video_thread);
+}
+
 void * video(void * param)
 {
     int last_drawn_frame = -1;

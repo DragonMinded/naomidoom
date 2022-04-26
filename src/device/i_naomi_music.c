@@ -39,6 +39,12 @@ static int global_count = 1;
 
 static play_instructions_t instructions;
 
+// Specifically so errors aren't annoying to display.
+void _pauseAnySong()
+{
+    instructions.pause = 1;
+}
+
 void *audiothread_music(void *param)
 {
     play_instructions_t *inst = (play_instructions_t *)param;
@@ -87,6 +93,11 @@ void *audiothread_music(void *param)
             {
                 while (inst->pause != 0 && inst->exit == 0)
                 {
+                    // Write empty silence until the buffer is full.
+                    uint32_t silence[32];
+                    memset(silence, 0, sizeof(silence));
+                    while(audio_write_stereo_data(silence, 32) == 32) { ; }
+
                     // Sleep for an arbitrary amount and check again.
                     thread_sleep(sleep_us);
                 }
