@@ -10,6 +10,7 @@
 #include <naomi/console.h>
 #include <naomi/interrupt.h>
 #include <naomi/posix.h>
+#include <sys/time.h>
 #include "../doomdef.h"
 #include "../d_main.h"
 #include "../m_argv.h"
@@ -115,6 +116,9 @@ int main()
     return 0;
 }
 
+// Max number of microseconds between forward taps to consider a sprint.
+#define MAX_DOUBLE_TAP_SPRINT 250000
+
 void D_PostEvent(event_t* ev);
 
 void I_SendInput(evtype_t type, int data)
@@ -125,8 +129,22 @@ void I_SendInput(evtype_t type, int data)
     D_PostEvent(&event);
 }
 
+uint64_t _get_time()
+{
+    struct timeval time;
+    if (gettimeofday(&time, NULL) == 0)
+    {
+        return (((uint64_t)time.tv_sec) * 1000000) + time.tv_usec;
+    }
+
+    return 0;
+}
+
 void I_StartTic (void)
 {
+    static uint64_t last_forward_press = 0;
+    static int sprint_pressed = 0;
+
     // This seems like a good place to read key inputs.
     ATOMIC({
         if (controls_available)
@@ -175,10 +193,44 @@ void I_StartTic (void)
 
             if (pressed.player1.up)
             {
+                uint64_t cur_forward_press = _get_time();
+                if (cur_forward_press > 0)
+                {
+                    // See if we can work out when the last tap was, for double-tapping
+                    // to sprint.
+                    if (last_forward_press == 0)
+                    {
+                        // Our last tap was a sprint, or we have never gone forward before.
+                        last_forward_press = cur_forward_press;
+                    }
+                    else
+                    {
+                        // If the last tap was the right amount of time, then simulate a
+                        // sprint key press.
+                        uint64_t us_apart = cur_forward_press - last_forward_press;
+                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                        {
+                            sprint_pressed = 1;
+                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                        }
+                        else
+                        {
+                            // Just overwrite the last tap.
+                            last_forward_press = cur_forward_press;
+                        }
+                    }
+                }
                 I_SendInput(ev_keydown, KEY_UPARROW);
             }
             if (released.player1.up)
             {
+                // If we were sprinting we need to undo that.
+                if (sprint_pressed)
+                {
+                    I_SendInput(ev_keyup, KEY_RSHIFT);
+                    sprint_pressed = 0;
+                    last_forward_press = 0;
+                }
                 I_SendInput(ev_keyup, KEY_UPARROW);
             }
 
