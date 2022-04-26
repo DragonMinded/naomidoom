@@ -229,6 +229,43 @@ void P_DeathThink (player_t* player)
 }
 
 
+#ifdef NAOMI
+// Specifically to support paging through weapons on Sega Naomi port.
+int P_PlayerCanSwitchWeapon (player_t* player, weapontype_t newweapon)
+{
+	if (newweapon == wp_fist
+	    && player->weaponowned[wp_chainsaw]
+	    && !(player->readyweapon == wp_chainsaw
+		 && player->powers[pw_strength]))
+	{
+	    newweapon = wp_chainsaw;
+	}
+
+	if ( (gamemode == commercial)
+	    && newweapon == wp_shotgun
+	    && player->weaponowned[wp_supershotgun]
+	    && player->readyweapon != wp_supershotgun)
+	{
+	    newweapon = wp_supershotgun;
+	}
+
+	if (player->weaponowned[newweapon]
+	    && newweapon != player->readyweapon)
+	{
+	    // Do not go to plasma or BFG in shareware,
+	    //  even if cheated.
+	    if ((newweapon != wp_plasma
+		 && newweapon != wp_bfg)
+		|| (gamemode != shareware) )
+	    {
+            return 1;
+	    }
+	}
+
+    return 0;
+}
+#endif
+
 
 //
 // P_PlayerThink
@@ -286,7 +323,7 @@ void P_PlayerThink (player_t* player)
 	//  when the weapon psprite can do it
 	//  (read: not in the middle of an attack).
 	newweapon = (cmd->buttons&BT_WEAPONMASK)>>BT_WEAPONSHIFT;
-	
+    	
 	if (newweapon == wp_fist
 	    && player->weaponowned[wp_chainsaw]
 	    && !(player->readyweapon == wp_chainsaw
@@ -302,7 +339,6 @@ void P_PlayerThink (player_t* player)
 	{
 	    newweapon = wp_supershotgun;
 	}
-	
 
 	if (player->weaponowned[newweapon]
 	    && newweapon != player->readyweapon)

@@ -164,7 +164,9 @@ void S_Init
 {  
   int		i;
 
+#ifdef SAWDEBUG
   fprintf( stderr, "S_Init: default sfx volume %d\n", sfxVolume);
+#endif
 
   // Whatever these did with DMX, these are rather dummies now.
   I_SetChannels();

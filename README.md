@@ -14,11 +14,13 @@ to add a WAD file to the `romfs/` directory.
 * 1P Button 1 is fire.
 * 1P Button 2 is use.
 * 1P Button 3 is the strafe modifier. Holding this down causes the joystick left/right to act as strafe instead of turn.
+* 1P Button 4 is switch to previous weapon.
+* 1P Button 5 is switch to next weapon.
 * 1P button 6 is the automap modifier. Holding this down causes the automap to display.
 
 ## Current Issues
 
-* The inputs are currently not configurable at all and are missing some important mappings (can't change weapon).
+* The inputs are currently not configurable at all.
 * SFX are not directional nor do they update when you move around.
 * Load/Save game are completely untested.
 * Cannot choose "y" to exit game, not that there is anything to exit to.

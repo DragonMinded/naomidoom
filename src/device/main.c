@@ -10,8 +10,10 @@
 #include <naomi/console.h>
 #include <naomi/interrupt.h>
 #include <naomi/posix.h>
+#include <naomi/thread.h>
 #include <sys/time.h>
 #include "../doomdef.h"
+#include "../doomstat.h"
 #include "../d_main.h"
 #include "../m_argv.h"
 #include "../d_event.h"
@@ -57,20 +59,21 @@ void _draw_loading_screen()
     video_display_on_vblank();
 }
 
+// Defines from our other implementation files.
+void _pauseAnySong();
+void _disableAnyVideoUpdates();
+
 void I_DrawErrorScreen()
 {
-    // I know this isn't the best, since it locks out GDB, but it is what it is.
-    uint32_t old_irq = irq_disable();
+    _pauseAnySong();
+    _disableAnyVideoUpdates();
 
     video_init(VIDEO_COLOR_1555);
     video_set_background_color(rgb(48, 48, 48));
     video_draw_debug_text(16, 16, rgb(255, 255, 255), stderr_buf);
     video_display_on_vblank();
 
-    while ( 1 ) { ; }
-
-    // We should never get here.
-    irq_restore(old_irq);
+    while ( 1 ) { thread_yield(); }
 }
 
 int main()
@@ -117,7 +120,7 @@ int main()
 }
 
 // Max number of microseconds between forward taps to consider a sprint.
-#define MAX_DOUBLE_TAP_SPRINT 250000
+#define MAX_DOUBLE_TAP_SPRINT 200000
 
 // Sprint active bitfield for tracking buttons held.
 #define FORWARD_ACTIVE 0x1
@@ -130,6 +133,8 @@ int main()
 #define RIGHT_INACTIVE (~RIGHT_ACTIVE) & 0xF
 
 void D_PostEvent(event_t* ev);
+void I_Error (char *error, ...) __attribute__ ((noreturn));
+int P_PlayerCanSwitchWeapon (player_t* player, weapontype_t newweapon);
 
 void I_SendInput(evtype_t type, int data)
 {
@@ -137,6 +142,26 @@ void I_SendInput(evtype_t type, int data)
     event.type = type;
     event.data1 = data;
     D_PostEvent(&event);
+}
+
+#define MAX_UP_QUEUED 10
+int upevents[MAX_UP_QUEUED];
+int numpevents = 0;
+
+void I_SendDelayedInput(evtype_t type, int data)
+{
+    if (type != ev_keyup)
+    {
+        I_Error("Cannot send delayed event type %d!", type);
+    }
+
+    if (numpevents == MAX_UP_QUEUED)
+    {
+        I_Error("Maximum queued events reached!");
+    }
+
+    upevents[numpevents] = data;
+    numpevents++;
 }
 
 uint64_t _get_time()
@@ -150,6 +175,56 @@ uint64_t _get_time()
     return 0;
 }
 
+int _weapon_to_position(weapontype_t weapon)
+{
+    switch(weapon)
+    {
+        case wp_fist:
+        case wp_chainsaw:
+            return 0;
+        case wp_pistol:
+            return 1;
+        case wp_shotgun:
+        case wp_supershotgun:
+            return 2;
+        case wp_chaingun:
+            return 3;
+        case wp_missile:
+            return 4;
+        case wp_plasma:
+            return 5;
+        case wp_bfg:
+            return 6;
+        default:
+            // Should never happen.
+            I_Error("Attempt to get position of invalid weapon %d!", weapon);
+    }
+}
+
+weapontype_t _position_to_weapon(int pos)
+{
+    switch(pos)
+    {
+        case 0:
+            return wp_fist;
+        case 1:
+            return wp_pistol;
+        case 2:
+            return wp_shotgun;
+        case 3:
+            return wp_chaingun;
+        case 4:
+            return wp_missile;
+        case 5:
+            return wp_plasma;
+        case 6:
+            return wp_bfg;
+        default:
+            // Should never happen.
+            I_Error("Attempt to get weapon of invalid position %d!", pos);
+    }
+}
+
 void I_StartTic (void)
 {
     static uint64_t last_forward_press = 0;
@@ -160,6 +235,13 @@ void I_StartTic (void)
 
     // This seems like a good place to read key inputs.
     ATOMIC({
+        // Send pending release events.
+        for (int evt = 0; evt < numpevents; evt++)
+        {
+            I_SendInput(ev_keyup, upevents[evt]);
+        }
+        numpevents = 0;
+
         if (controls_available)
         {
             controls_available = 0;
@@ -439,16 +521,78 @@ void I_StartTic (void)
                 I_SendInput(ev_keyup, KEY_RALT);
             }
 
+            // For weapon switching, since Doom doesn't seem to have next/previous
+            // weapon buttons, we must do it ourselves!
+            player_t *player = NULL;
+            weapontype_t curWeapon;
+            if (consoleplayer >= 0 && consoleplayer < MAXPLAYERS)
+            {
+                player = &players[consoleplayer];
+                curWeapon = player->pendingweapon == wp_nochange ? player->readyweapon : player->pendingweapon;
+            }
+
+            // Previous weapon, mapped to 1P button 4.
+            if (pressed.player1.button4)
+            {
+                // Gotta figure out what weapon to try to swap to.
+                if (player != NULL)
+                {
+                    int weaponPos = _weapon_to_position(curWeapon);
+                    for (int try = 0; try < 6; try++)
+                    {
+                        // Try to switch to the previous available weapon.
+                        weaponPos --;
+                        if (weaponPos < 0) { weaponPos = 6; }
+
+                        // See if the player can switch to this weapon.
+                        if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
+                        {
+                            // They can! Simulate a press of that position.
+                            printf("Pressing key %c\n", '1' + weaponPos);
+                            I_SendInput(ev_keydown, '1' + weaponPos);
+                            I_SendDelayedInput(ev_keyup, '1' + weaponPos);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Next weapon, mapped to 1P button 5.
+            if (pressed.player1.button5)
+            {
+                // Gotta figure out what weapon to try to swap to.
+                if (player != NULL)
+                {
+                    int weaponPos = _weapon_to_position(curWeapon);
+                    for (int try = 0; try < 6; try++)
+                    {
+                        // Try to switch to the next available weapon.
+                        weaponPos ++;
+                        if (weaponPos > 6) { weaponPos = 0; }
+
+                        // See if the player can switch to this weapon.
+                        if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
+                        {
+                            // They can! Simulate a press of that position.
+                            printf("Pressing key %c\n", '1' + weaponPos);
+                            I_SendInput(ev_keydown, '1' + weaponPos);
+                            I_SendDelayedInput(ev_keyup, '1' + weaponPos);
+                            break;
+                        }
+                    }
+                }
+            }
+
             // Automap modifier, mapped to 1P button 6.
             if (pressed.player1.button6)
             {
                 I_SendInput(ev_keydown, KEY_TAB);
-                I_SendInput(ev_keyup, KEY_TAB);
+                I_SendDelayedInput(ev_keyup, KEY_TAB);
             }
             if (released.player1.button6)
             {
                 I_SendInput(ev_keydown, KEY_TAB);
-                I_SendInput(ev_keyup, KEY_TAB);
+                I_SendDelayedInput(ev_keyup, KEY_TAB);
             }
         }
     });
