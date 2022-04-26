@@ -8,16 +8,17 @@ to add a WAD file to the `romfs/` directory.
 ## Controls
 
 * The 1P joystick controls forward/reverse and turning left/right.
-* Double-tapping forward will cause you to sprint instead of normal walking.
+* Double-tapping any direction will put you in sprint mode until you stop moving again.
 * 1P Start is used to, well, start the game. It also is used for selecting menu entries.
 * 2P Start is used to back out of menus.
 * 1P Button 1 is fire.
 * 1P Button 2 is use.
 * 1P Button 3 is the strafe modifier. Holding this down causes the joystick left/right to act as strafe instead of turn.
+* 1P button 6 is the automap modifier. Holding this down causes the automap to display.
 
 ## Current Issues
 
-* The inputs are currently not configurable at all and are missing some important mappings (can't pull up automap, can't change weapon).
+* The inputs are currently not configurable at all and are missing some important mappings (can't change weapon).
 * SFX are not directional nor do they update when you move around.
 * Load/Save game are completely untested.
 * Unsure what happens if you attempt to exit the game, don't do it.
