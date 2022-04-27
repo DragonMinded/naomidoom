@@ -16,6 +16,8 @@ static texture_description_t *outtex[2];
 static int whichtex = 0;
 static float xscale;
 static float yscale;
+static int yoff;
+static int debugxoff;
 static int doom_updates;
 static int started = 0;
 
@@ -65,16 +67,16 @@ void * video(void * param)
 
             // Now, request to draw the texture, making sure to scale it properly
             ta_commit_begin();
-            sprite_draw_scaled(0, 0, xscale, yscale, outtex[whichtex]);
+            sprite_draw_scaled(0, yoff, xscale, yscale, outtex[whichtex]);
             ta_commit_end();
 
             // Now, ask the TA to scale it for us
             ta_render();
 
 #ifdef NAOMI_DEBUG
-            video_draw_debug_text(400, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps, video_width(), video_height());
-            video_draw_debug_text(400, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
-            video_draw_debug_text(400, 40, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
+            video_draw_debug_text(debugxoff, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps, video_width(), video_height());
+            video_draw_debug_text(debugxoff, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
+            video_draw_debug_text(debugxoff, 40, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
             video_updates ++;
 #endif
 
@@ -136,9 +138,23 @@ void I_InitGraphics (void)
     ta_texture_load(outtex[1]->vram_location, outtex[1]->width, 8, tmp);
     free(tmp);
 
-    // Calculate the scaling factors.
-    xscale = (float)video_width() / (float)SCREENWIDTH;
-    yscale = (float)video_height() / (float)SCREENHEIGHT;
+    // Calculate the scaling factors and y offset. This is based off
+    // of the assumption that doom wants to be stretched to a 4:3 resolution.
+    if (video_is_vertical())
+    {
+        float yheight = ((float)video_width() * 3.0) / 4.0;
+        xscale = (float)video_width() / (float)SCREENWIDTH;
+        yscale = yheight / (float)SCREENHEIGHT;
+        yoff = (video_height() - (int)yheight) / 2;
+        debugxoff = 20;
+    }
+    else
+    {
+        xscale = (float)video_width() / (float)SCREENWIDTH;
+        yscale = (float)video_height() / (float)SCREENHEIGHT;
+        yoff = 0;
+        debugxoff = 400;
+    }
 
     // Mark that we don't have a frame.
     doom_updates = 0;
