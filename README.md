@@ -5,6 +5,11 @@ Kristoffer Andersen who got Doom ported to a framebuffer. If you want to compile
 first set up the libnaomi toolchain from https://github.com/DragonMinded/libnaomi and you will also need
 to add a WAD file to the `romfs/` directory.
 
+## Releases
+
+A precompiled release with the Doom 1 Shareware WAD is available under the `shareware/` directory. Load
+it with Demul or net boot it on your Naomi cabinet to play it!
+
 ## Controls
 
 * The 1P joystick controls forward/reverse and turning left/right.
