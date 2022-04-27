@@ -25,7 +25,7 @@ to add a WAD file to the `romfs/` directory.
 * Load/Save game are completely untested.
 * Cannot choose "y" to exit game, not that there is anything to exit to.
 * Settings don't load/save from EEPROM like they should.
-* There is no test mode binary, so going into Naomi test mode just boots the game.
+* There are no settings in test mode, where game settings should live.
 
 ## Acknowledgements
 
