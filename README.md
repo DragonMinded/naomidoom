@@ -10,6 +10,13 @@ to add a WAD file to the `romfs/` directory.
 A precompiled release with the Doom 1 Shareware WAD is available under the `shareware/` directory. Load
 it with Demul or net boot it on your Naomi cabinet to play it!
 
+## Working WAD Files
+
+The following WADs have been tested working with Doom for Sega Naomi:
+
+* Original Doom shareware WAD (DOOM1.WAD).
+* Doom Ultimate WAD (DOOM.WAD or DOOMU.WAD, depending on source).
+
 ## Controls
 
 * The 1P joystick controls forward/reverse and turning left/right.
