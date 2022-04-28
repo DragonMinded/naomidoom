@@ -14,7 +14,7 @@ SRCS += src/device/main.c src/device/i_naomi_video.c src/device/i_naomi_sound.c 
 SRCS += assets/loading.png
 
 # Compile "normal linux" as per the forked repo.
-FLAGS = -DNAOMI=1
+FLAGS  = -DNAOMI=1
 
 # We need GNU extensions.
 CSTD = gnu99
@@ -52,6 +52,20 @@ doom.bin: ${MAKEROM_FILE} ${NAOMI_BIN_FILE} build/romfs.bin
 		--test-entrypoint ${TEST_ADDR} \
 		--align-before-data 4 \
 		--filedata build/romfs.bin
+
+# Provide a helper for making shareware releases.
+.PHONY: shareware
+shareware:
+	mkdir tmp || true
+	mv romfs/*.wad tmp/ || true
+	mv romfs/*.WAD tmp/ || true
+	cp shareware/DOOM1.WAD romfs/
+	make doom.bin
+	mv doom.bin shareware/
+	rm romfs/DOOM1.WAD
+	mv tmp/* romfs/
+	rm -rf tmp/
+	echo "Shareware ROM build and placed in shareware/ directory!"
 
 # Include a simple clean target which wipes the build directory
 # and kills any binary built.

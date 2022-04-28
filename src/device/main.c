@@ -145,7 +145,7 @@ int test()
             "No settings here yet!",
             "",
             "Build date: xxxx-xx-xx",
-            "Release version: 1.0 alpha 1",
+            "Release version: 1.0 alpha 2",
             "",
             "press [test] to exit",
         };
