@@ -48,7 +48,7 @@ void P_SpawnMapThing (mapthing_t*	mthing);
 // P_SetMobjState
 // Returns true if the mobj is still present.
 //
-int test;
+static int test;
 
 boolean
 P_SetMobjState
