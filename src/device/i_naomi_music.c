@@ -5,7 +5,8 @@
 #include "../i_sound.h"
 
 #define INVALID_HANDLE -1
-#define BUFSIZE 4096
+#define SAMPLELENGTH 4096
+#define SILENCELENGTH 1024
 #define SAMPLERATE 22050
 #define VOLUME_MULT 2
 
@@ -38,6 +39,11 @@ static int reglist_count = 0;
 static int global_count = 1;
 
 static play_instructions_t instructions;
+static uint32_t *buffer;
+static uint32_t *silence;
+
+// How many samples out of the total did we write last wake-up.
+float percent_empty = 0.0;
 
 // Specifically so errors aren't annoying to display.
 void _pauseAnySong()
@@ -59,10 +65,10 @@ void *audiothread_music(void *param)
     options.rate = SAMPLERATE;
     options.format = MID_AUDIO_S16LSB;
     options.channels = 2;
-    options.buffer_size = BUFSIZE / 4;
+    options.buffer_size = SAMPLELENGTH;
 
     // Now that we're ready to go, set our priority high so we don't stutter.
-    thread_priority(instructions.thread, 1);
+    thread_priority(instructions.thread, 2);
 
     MidSong *song = mid_song_load (stream, &options);
     mid_istream_close (stream);
@@ -72,19 +78,22 @@ void *audiothread_music(void *param)
         return NULL;
     }
 
-    uint32_t *buffer = malloc(BUFSIZE);
     mid_song_set_volume(song, m_volume * VOLUME_MULT);
     mid_song_start(song);
 
-    int sleep_us = (int)(1000000.0 * (((float)BUFSIZE / 4.0) / (float)SAMPLERATE));
+    // Specifically want to wake up before its our time to fill the buffer again,
+    // so we leave ourselves room for 1/8 of the buffer to have filled. If you
+    // turn on debugging, you should see the buf empty percent hover around 12-13%.
+    int sleep_us = (int)(1000000.0 * ((float)SAMPLELENGTH / (float)SAMPLERATE) * (1.0 / 8.0));
     int volume = m_volume;
+    int written = 0;
 
-    audio_register_ringbuffer(AUDIO_FORMAT_16BIT, SAMPLERATE, BUFSIZE);
+    audio_register_ringbuffer(AUDIO_FORMAT_16BIT, SAMPLERATE, SAMPLELENGTH);
 
     while (inst->exit == 0)
     {
         int bytes_read;
-        while (inst->exit == 0 && (bytes_read = mid_song_read_wave(song, (void *)buffer, BUFSIZE)))
+        while (inst->exit == 0 && (bytes_read = mid_song_read_wave(song, (void *)buffer, SAMPLELENGTH * 4)))
         {
             int numsamples = bytes_read / 4;
             uint32_t *samples = buffer;
@@ -94,9 +103,13 @@ void *audiothread_music(void *param)
                 while (inst->pause != 0 && inst->exit == 0)
                 {
                     // Write empty silence until the buffer is full.
-                    uint32_t silence[32];
-                    memset(silence, 0, sizeof(silence));
-                    while(audio_write_stereo_data(silence, 32) == 32) { ; }
+                    int written_this_loop;
+                    while((written_this_loop = audio_write_stereo_data(silence, SILENCELENGTH)) == SILENCELENGTH) { written += written_this_loop; }
+                    written += written_this_loop;
+
+                    // Keep track of how many samples we actually wrote (buffer empty %).
+                    percent_empty = (float)written / (float)SAMPLELENGTH;
+                    written = 0;
 
                     // Sleep for an arbitrary amount and check again.
                     thread_sleep(sleep_us);
@@ -111,10 +124,18 @@ void *audiothread_music(void *param)
                         inst->exit = 1;
                         break;
                     }
+
+                    // Purely for debugging, to see how full/empty the buffer is staying.
+                    written += actual_written;
+
                     if (actual_written < numsamples)
                     {
                         numsamples -= actual_written;
                         samples += actual_written;
+
+                        // Keep track of how many samples we actually wrote (buffer empty %).
+                        percent_empty = (float)written / (float)SAMPLELENGTH;
+                        written = 0;
 
                         // Sleep for the time it takes to play half our buffer so we can wake up and
                         // fill it again.
@@ -149,7 +170,6 @@ void *audiothread_music(void *param)
 
     audio_unregister_ringbuffer();
     mid_song_free (song);
-    free(buffer);
 
     return 0;
 }
@@ -160,6 +180,10 @@ void I_InitMusic(void)
     {
         return;
     }
+
+    buffer = malloc(SAMPLELENGTH * 4);
+    silence = malloc(SILENCELENGTH * 4);
+    memset(silence, 0, SILENCELENGTH * 4);
 
     m_initialized = 1;
     reglist_count = 0;
@@ -195,6 +219,9 @@ void I_ShutdownMusic(void)
 
         reglist = 0;
         reglist_count = 0;
+
+        free(buffer);
+        free(silence);
     }
 
     m_initialized = 0;
