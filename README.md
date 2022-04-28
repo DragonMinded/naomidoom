@@ -37,6 +37,7 @@ The following WADs have been tested working with Doom for Sega Naomi:
 * Load/Save game are completely untested.
 * Settings don't load/save from EEPROM like they should.
 * There are no settings in test mode, where game settings should live.
+* Clicking/ticking sound heard from speakers in shareware version while playing music.
 
 ## Acknowledgements
 
