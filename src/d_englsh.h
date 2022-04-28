@@ -36,8 +36,13 @@
 //
 //	M_Menu.C
 //
+#ifdef NAOMI
+#define PRESSKEY 	"press a button."
+#define PRESSYN 	"press 1P (yes) or 2P (no) start."
+#else
 #define PRESSKEY 	"press a key."
 #define PRESSYN 	"press y or n."
+#endif
 #define QUITMSG	"are you sure you want to\nquit this great game?"
 #define LOADNET 	"you can't do load while in a net game!\n\n"PRESSKEY
 #define QLOADNET	"you can't quickload during a netgame!\n\n"PRESSKEY

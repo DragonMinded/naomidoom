@@ -243,7 +243,9 @@ enum
     loadgame,
     savegame,
     readthis,
+#ifndef NAOMI
     quitdoom,
+#endif
     main_end
 } main_e;
 
@@ -255,7 +257,9 @@ menuitem_t MainMenu[]=
     {1,"M_SAVEG",M_SaveGame,'s'},
     // Another hickup with Special edition.
     {1,"M_RDTHIS",M_ReadThis,'r'},
+#ifndef NAOMI
     {1,"M_QUITG",M_QuitDOOM,'q'}
+#endif
 };
 
 menu_t  MainDef =
@@ -340,12 +344,19 @@ enum
 {
     endgame,
     messages,
+#ifndef NAOMI
     detail,
     scrnsize,
     option_empty1,
     mousesens,
     option_empty2,
     soundvol,
+#else
+    sfx_vol,
+    sfx_empty1,
+    music_vol,
+    sfx_empty2,
+#endif
     opt_end
 } options_e;
 
@@ -353,12 +364,19 @@ menuitem_t OptionsMenu[]=
 {
     {1,"M_ENDGAM",	M_EndGame,'e'},
     {1,"M_MESSG",	M_ChangeMessages,'m'},
+#ifndef NAOMI
     {1,"M_DETAIL",	M_ChangeDetail,'g'},
     {2,"M_SCRNSZ",	M_SizeDisplay,'s'},
     {-1,"",0},
     {2,"M_MSENS",	M_ChangeSensitivity,'m'},
     {-1,"",0},
     {1,"M_SVOL",	M_Sound,'s'}
+#else
+    {2,"M_SFXVOL",M_SfxVol,'s'},
+    {-1,"",0},
+    {2,"M_MUSVOL",M_MusicVol,'m'},
+    {-1,"",0}
+#endif
 };
 
 menu_t  OptionsDef =
@@ -416,6 +434,7 @@ menu_t  ReadDef2 =
     0
 };
 
+#ifndef NAOMI
 //
 // SOUND VOLUME MENU
 //
@@ -445,6 +464,7 @@ menu_t  SoundDef =
     80,64,
     0
 };
+#endif
 
 //
 // LOAD GAME MENU
@@ -680,7 +700,11 @@ char    tempstring[80];
 
 void M_QuickSaveResponse(int ch)
 {
+#ifdef NAOMI
+    if (ch == KEY_ENTER)
+#else
     if (ch == 'y')
+#endif
     {
 	M_DoSave(quickSaveSlot);
 	S_StartSound(NULL,sfx_swtchx);
@@ -717,7 +741,11 @@ void M_QuickSave(void)
 //
 void M_QuickLoadResponse(int ch)
 {
+#ifdef NAOMI
+    if (ch == KEY_ENTER)
+#else
     if (ch == 'y')
+#endif
     {
 	M_LoadSelect(quickSaveSlot);
 	S_StartSound(NULL,sfx_swtchx);
@@ -794,6 +822,7 @@ void M_DrawReadThis2(void)
 }
 
 
+#ifndef NAOMI
 //
 // Change Sfx & Music volumes
 //
@@ -812,6 +841,7 @@ void M_Sound(int choice)
 {
     M_SetupNextMenu(&SoundDef);
 }
+#endif
 
 void M_SfxVol(int choice)
 {
@@ -897,7 +927,11 @@ void M_DrawEpisode(void)
 
 void M_VerifyNightmare(int ch)
 {
+#ifdef NAOMI
+    if (ch != KEY_ENTER)
+#else
     if (ch != 'y')
+#endif
 	return;
 		
     G_DeferedInitNew(nightmare,epi+1,1);
@@ -944,7 +978,9 @@ void M_Episode(int choice)
 //
 // M_Options
 //
+#ifndef NAOMI
 char    detailNames[2][9]	= {"M_GDHIGH","M_GDLOW"};
+#endif
 char	msgNames[2][9]		= {"M_MSGOFF","M_MSGON"};
 
 
@@ -952,17 +988,27 @@ void M_DrawOptions(void)
 {
     V_DrawPatchDirect (108,15,0,W_CacheLumpName("M_OPTTTL",PU_CACHE));
 	
+#ifndef NAOMI
     V_DrawPatchDirect (OptionsDef.x + 175,OptionsDef.y+LINEHEIGHT*detail,0,
 		       W_CacheLumpName(detailNames[detailLevel],PU_CACHE));
+#endif
 
     V_DrawPatchDirect (OptionsDef.x + 120,OptionsDef.y+LINEHEIGHT*messages,0,
 		       W_CacheLumpName(msgNames[showMessages],PU_CACHE));
 
+#ifndef NAOMI
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(mousesens+1),
 		 10,mouseSensitivity);
 	
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
 		 9,screenSize);
+#else
+    M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(sfx_vol+1),
+		 16,snd_SfxVolume);
+
+    M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(music_vol+1),
+		 16,snd_MusicVolume);
+#endif
 }
 
 void M_Options(int choice)
@@ -995,7 +1041,11 @@ void M_ChangeMessages(int choice)
 //
 void M_EndGameResponse(int ch)
 {
+#ifdef NAOMI
+    if (ch != KEY_ENTER)
+#else
     if (ch != 'y')
+#endif
 	return;
 		
     currentMenu->lastOn = itemOn;
@@ -1020,7 +1070,6 @@ void M_EndGame(int choice)
 	
     M_StartMessage(ENDGAME,M_EndGameResponse,true);
 }
-
 
 
 
@@ -1079,7 +1128,11 @@ int     quitsounds2[8] =
 
 void M_QuitResponse(int ch)
 {
+#ifdef NAOMI
+    if (ch != KEY_ENTER)
+#else
     if (ch != 'y')
+#endif
 	return;
     if (!netgame)
     {
@@ -1493,8 +1546,13 @@ boolean M_Responder (event_t* ev)
     // Take care of any messages that need input
     if (messageToPrint)
     {
+#ifdef NAOMI
+	if (messageNeedsInput == true &&
+	    !(ch == KEY_ENTER || ch == KEY_ESCAPE))
+#else
 	if (messageNeedsInput == true &&
 	    !(ch == ' ' || ch == 'n' || ch == 'y' || ch == KEY_ESCAPE))
+#endif
 	    return false;
 		
 	menuactive = messageLastMenuActive;
@@ -1556,12 +1614,14 @@ boolean M_Responder (event_t* ev)
 	    M_LoadGame(0);
 	    return true;
 				
+#ifndef NAOMI
 	  case KEY_F4:            // Sound Volume
 	    M_StartControlPanel ();
 	    currentMenu = &SoundDef;
 	    itemOn = sfx_vol;
 	    S_StartSound(NULL,sfx_swtchn);
 	    return true;
+#endif
 				
 	  case KEY_F5:            // Detail toggle
 	    M_ChangeDetail(0);
@@ -1866,7 +1926,9 @@ void M_Init (void)
 	// This is used because DOOM 2 had only one HELP
         //  page. I use CREDIT as second page now, but
 	//  kept this hack for educational purposes.
+#ifndef NAOMI
 	MainMenu[readthis] = MainMenu[quitdoom];
+#endif
 	MainDef.numitems--;
 	MainDef.y += 8;
 	NewDef.prevMenu = &MainDef;

@@ -35,7 +35,6 @@ The following WADs have been tested working with Doom for Sega Naomi:
 * The inputs are currently not configurable at all.
 * SFX are not directional nor do they update when you move around.
 * Load/Save game are completely untested.
-* Cannot choose "y" to exit game, not that there is anything to exit to.
 * Settings don't load/save from EEPROM like they should.
 * There are no settings in test mode, where game settings should live.
 
