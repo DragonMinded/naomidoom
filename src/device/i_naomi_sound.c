@@ -4,6 +4,7 @@
 #include "../w_wad.h"
 #include "../z_zone.h"
 
+#define PAN_SCALE 128.0
 
 // So we can link between SFX and AICA-registered sound effects.
 typedef struct {
@@ -12,6 +13,16 @@ typedef struct {
 } audio_link_t;
 
 audio_link_t links[NUMSFX];
+
+typedef struct
+{
+    int leftchan;
+    int rightchan;
+} sound_t;
+
+// Number of active sounds we are tracking.
+#define MAX_SOUNDS 32
+sound_t sounds[MAX_SOUNDS];
 
 static void _load_sfx(sfxinfo_t *sfxInfo)
 {
@@ -79,6 +90,8 @@ void I_InitSound()
             links[i].handle = -1;
         }
     }
+
+    memset(sounds, 0, sizeof(sounds));
 }
 
 void I_UpdateSound(void)
@@ -125,7 +138,7 @@ int I_GetSfxLumpNum (sfxinfo_t* sfxinfo)
 }
 
 // Logarithmic volume levels for sounds.
-float logtable[16] = {
+static float logtable[16] = {
     0.000,
     0.097,
     0.273,
@@ -144,16 +157,44 @@ float logtable[16] = {
     1.000,
 };
 
+void _bookkeep_sounds()
+{
+    for (int i = 0; i < MAX_SOUNDS; i++)
+    {
+        if (sounds[i].leftchan != 0 && !audio_sound_instance_is_playing(sounds[i].leftchan))
+        {
+            // This sound is dead.
+            sounds[i].leftchan = 0;
+            sounds[i].rightchan = 0;
+        }
+    }
+}
+
 int I_StartSound(int id, int vol, int sep, int pitch, int priority)
 {
     if (links[id].sfx != NULL && links[id].handle > 0)
     {
         if (vol < 0) { vol = 0; }
-        if (vol > 15) { vol = 15; }
 
-        // TODO: Stereo separation, by starting the same sound at different volumes on each speaker.
-        audio_play_registered_sound(links[id].handle, SPEAKER_LEFT | SPEAKER_RIGHT, logtable[vol]);
-        return links[id].handle;
+        // First, clear up any sounds we might have tracked.
+        _bookkeep_sounds();
+
+        // Now, calculate panning.
+        float rightvol = ((float)sep / PAN_SCALE) * (float)vol;
+        float leftvol = ((float)(255 - sep) / PAN_SCALE) * (float)vol;
+
+        if (leftvol > 15.0) { leftvol = 15.0; }
+        if (rightvol > 15.0) { rightvol = 15.0; }
+
+        for (int i = 0; i < MAX_SOUNDS; i++)
+        {
+            if (sounds[i].leftchan == 0)
+            {
+                sounds[i].leftchan = audio_play_registered_sound(links[id].handle, SPEAKER_LEFT, logtable[(int)leftvol]);
+                sounds[i].rightchan = audio_play_registered_sound(links[id].handle, SPEAKER_RIGHT, logtable[(int)rightvol]);
+                return sounds[i].leftchan;
+            }
+        }
     }
 
     return 0;
@@ -161,23 +202,56 @@ int I_StartSound(int id, int vol, int sep, int pitch, int priority)
 
 void I_StopSound(int handle)
 {
-    if (handle > 0)
+    for (int i = 0; i < MAX_SOUNDS; i++)
     {
-        // This technically stops all instances of this sound, however it seems to work fine.
-        audio_stop_registered_sound(handle);
+        if (sounds[i].leftchan == handle)
+        {
+            audio_stop_sound_instance(sounds[i].leftchan);
+            audio_stop_sound_instance(sounds[i].rightchan);
+            sounds[i].leftchan = 0;
+            sounds[i].rightchan = 0;
+            break;
+        }
     }
+
+    _bookkeep_sounds();
 }
 
 int I_SoundIsPlaying(int handle)
 {
-    // TODO: We need to return that the sound is still playing for any sound, so
-    // that the game will attempt to modify it if needed.
+    for (int i = 0; i < MAX_SOUNDS; i++)
+    {
+        if (sounds[i].leftchan == handle)
+        {
+            int playing = audio_sound_instance_is_playing(handle);
+            if (!playing)
+            {
+                sounds[i].leftchan = 0;
+                sounds[i].rightchan = 0;
+            }
+            return playing;
+        }
+    }
     return 0;
 }
 
 void I_UpdateSoundParams(int handle, int vol, int sep, int pitch)
 {
-    // TODO: libnaomi doesn't let us modify in-progress sounds yet, so we can't
-    // do anything with this.
-    return;
+    for (int i = 0; i < MAX_SOUNDS; i++)
+    {
+        if (sounds[i].leftchan == handle)
+        {
+            if (vol < 0) { vol = 0; }
+
+            // Update volume and panning.
+            float rightvol = ((float)sep / PAN_SCALE) * (float)vol;
+            float leftvol = ((float)(255 - sep) / PAN_SCALE) * (float)vol;
+
+            if (leftvol > 15.0) { leftvol = 15.0; }
+            if (rightvol > 15.0) { rightvol = 15.0; }
+
+            audio_change_sound_instance_volume(sounds[i].leftchan, logtable[(int)leftvol]);
+            audio_change_sound_instance_volume(sounds[i].rightchan, logtable[(int)rightvol]);
+        }
+    }
 }

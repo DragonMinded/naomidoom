@@ -5,10 +5,10 @@
 #include "../i_sound.h"
 
 #define INVALID_HANDLE -1
-#define SAMPLELENGTH 4096
+#define SAMPLELENGTH 8192
 #define SILENCELENGTH 1024
 #define SAMPLERATE 22050
-#define VOLUME_MULT 2
+#define MAX_VOLUME 15
 
 typedef struct
 {
@@ -32,7 +32,7 @@ typedef struct
 } play_instructions_t;
 
 static int m_initialized = 0;
-static volatile int m_volume = 127;
+int m_volume = 15;
 
 static registered_music_t *reglist = 0;
 static int reglist_count = 0;
@@ -50,6 +50,26 @@ void _pauseAnySong()
 {
     instructions.pause = 1;
 }
+
+// Logarithmic volume levels for sounds.
+static float logtable[16] = {
+    0.000,
+    0.097,
+    0.273,
+    0.398,
+    0.495,
+    0.574,
+    0.641,
+    0.699,
+    0.750,
+    0.796,
+    0.837,
+    0.875,
+    0.910,
+    0.942,
+    0.972,
+    1.000,
+};
 
 void *audiothread_music(void *param)
 {
@@ -78,17 +98,17 @@ void *audiothread_music(void *param)
         return NULL;
     }
 
-    mid_song_set_volume(song, m_volume * VOLUME_MULT);
+    mid_song_set_volume(song, 150);
     mid_song_start(song);
 
     // Specifically want to wake up before its our time to fill the buffer again,
-    // so we leave ourselves room for 1/8 of the buffer to have filled. If you
-    // turn on debugging, you should see the buf empty percent hover around 12-13%.
-    int sleep_us = (int)(1000000.0 * ((float)SAMPLELENGTH / (float)SAMPLERATE) * (1.0 / 8.0));
-    int volume = m_volume;
+    // so we leave ourselves room for 1/4 of the buffer to have filled. If you
+    // turn on debugging, you should see the buf empty percent hover around 25%.
+    int sleep_us = (int)(1000000.0 * ((float)SAMPLELENGTH / (float)SAMPLERATE) * (1.0 / 4.0));
     int written = 0;
 
     audio_register_ringbuffer(AUDIO_FORMAT_16BIT, SAMPLERATE, SAMPLELENGTH);
+    audio_change_ringbuffer_volume(logtable[m_volume]);
 
     while (inst->exit == 0)
     {
@@ -140,13 +160,6 @@ void *audiothread_music(void *param)
                         // Sleep for the time it takes to play half our buffer so we can wake up and
                         // fill it again.
                         thread_sleep(sleep_us);
-
-                        // Allow volume changes.
-                        if (volume != m_volume)
-                        {
-                            volume = m_volume;
-                            mid_song_set_volume(song, volume * VOLUME_MULT);
-                        }
                     }
                     else
                     {
@@ -231,7 +244,8 @@ void I_ShutdownMusic(void)
 void I_SetMusicVolume(int volume)
 {
     m_volume = volume < 0 ? 0 : volume;
-    m_volume = m_volume > 127 ? 127 : m_volume;
+    m_volume = m_volume > 15 ? 15 : m_volume;
+    audio_change_ringbuffer_volume(logtable[m_volume]);
 }
 
 // PAUSE game handling.

@@ -27,6 +27,7 @@ extern int controls_available;
 
 // Shared with i_naomi_music.h
 extern float percent_empty;
+extern int m_volume;
 
 void _disableAnyVideoUpdates()
 {
@@ -80,7 +81,8 @@ void * video(void * param)
             video_draw_debug_text(debugxoff, 20, rgb(200, 200, 20), "Video FPS: %.01f, %dx%d", video_thread_fps, video_width(), video_height());
             video_draw_debug_text(debugxoff, 30, rgb(200, 200, 20), "DOOM FPS: %.01f, %dx%d", doom_fps, SCREENWIDTH, SCREENHEIGHT);
             video_draw_debug_text(debugxoff, 40, rgb(200, 200, 20), "Audio Buf Empty: %.01f%%", percent_empty * 100.0);
-            video_draw_debug_text(debugxoff, 50, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
+            video_draw_debug_text(debugxoff, 50, rgb(200, 200, 20), "Music Volume: %d/15", m_volume);
+            video_draw_debug_text(debugxoff, 60, rgb(200, 200, 20), "IRQs: %lu", sched.interruptions);
             video_updates ++;
 #endif
 
