@@ -7,6 +7,7 @@
 #include <naomi/maple.h>
 #include <naomi/audio.h>
 #include <naomi/video.h>
+#include <naomi/eeprom.h>
 #include <naomi/console.h>
 #include <naomi/interrupt.h>
 #include <naomi/posix.h>
@@ -672,4 +673,91 @@ int access(const char *path, int axx)
 
     // Empty
     return EACCES;
+}
+
+typedef struct
+{
+    int show_messages;
+    int sfx_volume;
+    int music_volume;
+} doom_settings_t;
+
+static int settings_loaded = 0;
+static doom_settings_t settings;
+
+doom_settings_t *_naomi_load_settings()
+{
+    // I'm not worried about race conditions here since I intend this only to
+    // be used from the main Doom thread.
+    if (settings_loaded == 0)
+    {
+        // Default settings.
+        settings.music_volume = 8;
+        settings.sfx_volume = 8;
+        settings.show_messages = 1;
+
+        eeprom_t eeprom;
+        if (eeprom_read(&eeprom) == 0)
+        {
+            // TODO: Grab settings from EEPROM here.
+        }
+
+        settings_loaded = 1;
+    }
+
+    return &settings;
+}
+
+void naomi_load_settings()
+{
+    // Just trigger an EEPROM load.
+    _naomi_load_settings();
+}
+
+int naomi_get_show_messages()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->show_messages;
+}
+
+int naomi_get_sfx_volume()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->sfx_volume;
+}
+
+int naomi_get_music_volume()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->music_volume;
+}
+
+void naomi_save_settings()
+{
+    eeprom_t eeprom;
+    if (eeprom_read(&eeprom) == 0)
+    {
+        // TODO: Format a new EEPROM and write it here.
+    }
+
+    // Since we overwrote settings, they're "loaded" now.
+    settings_loaded = 1;
+}
+
+void naomi_set_show_messages(int val)
+{
+    settings_loaded = 1;
+    settings.show_messages = val;
+}
+
+void naomi_set_sfx_volume(int val)
+{
+    settings_loaded = 1;
+    settings.sfx_volume = val;
+}
+
+void naomi_set_music_volume(int val)
+{
+    settings_loaded = 1;
+    settings.music_volume = val;
 }

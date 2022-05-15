@@ -312,6 +312,12 @@ int	numdefaults;
 char*	defaultfile;
 
 
+#ifdef NAOMI
+void naomi_set_show_messages(int val);
+void naomi_set_sfx_volume(int val);
+void naomi_set_music_volume(int val);
+#endif
+
 //
 // M_SaveDefaults
 //
@@ -321,6 +327,7 @@ void M_SaveDefaults (void)
     int		v;
     FILE*	f;
 	
+#ifndef NAOMI
     f = fopen (defaultfile, "w");
     if (!f)
 	return; // can't write the file, but don't complain
@@ -339,6 +346,26 @@ void M_SaveDefaults (void)
     }
 	
     fclose (f);
+#else
+    // Save settings to EEPROM.
+    for (i=0 ; i<numdefaults ; i++)
+    {
+        if (strcmp(defaults[i].name, "show_messages") == 0)
+        {
+            naomi_set_show_messages(*defaults[i].location);
+        }
+        else if (strcmp(defaults[i].name, "music_volume") == 0)
+        {
+            naomi_set_music_volume(*defaults[i].location);
+        }
+        else if (strcmp(defaults[i].name, "sfx_volume") == 0)
+        {
+            naomi_set_sfx_volume(*defaults[i].location);
+        }
+    }
+
+    naomi_save_settings();
+#endif
 }
 
 
@@ -346,6 +373,12 @@ void M_SaveDefaults (void)
 // M_LoadDefaults
 //
 extern byte	scantokey[128];
+
+#ifdef NAOMI
+int naomi_get_show_messages();
+int naomi_get_sfx_volume();
+int naomi_get_music_volume();
+#endif
 
 void M_LoadDefaults (void)
 {
@@ -409,6 +442,23 @@ void M_LoadDefaults (void)
 	    }
 	}
 	fclose (f);
+    }
+#else
+    // Load settings from EEPROM.
+    for (i=0 ; i<numdefaults ; i++)
+    {
+        if (strcmp(defaults[i].name, "show_messages") == 0)
+        {
+            *defaults[i].location = naomi_get_show_messages();
+        }
+        else if (strcmp(defaults[i].name, "music_volume") == 0)
+        {
+            *defaults[i].location = naomi_get_music_volume();
+        }
+        else if (strcmp(defaults[i].name, "sfx_volume") == 0)
+        {
+            *defaults[i].location = naomi_get_sfx_volume();
+        }
     }
 #endif
 }

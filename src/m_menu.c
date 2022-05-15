@@ -1737,19 +1737,36 @@ boolean M_Responder (event_t* ev)
 	return true;
 		
       case KEY_ESCAPE:
+#ifndef NAOMI
 	currentMenu->lastOn = itemOn;
 	M_ClearMenus ();
 	S_StartSound(NULL,sfx_swtchx);
 	return true;
 		
       case KEY_BACKSPACE:
+#endif
 	currentMenu->lastOn = itemOn;
 	if (currentMenu->prevMenu)
 	{
+#ifdef NAOMI
+        if (currentMenu == &OptionsDef)
+        {
+            // Hack for saving values since there is no quit game on Naomi.
+            M_SaveDefaults();
+        }
+#endif
 	    currentMenu = currentMenu->prevMenu;
 	    itemOn = currentMenu->lastOn;
 	    S_StartSound(NULL,sfx_swtchn);
 	}
+#ifdef NAOMI
+    else
+    {
+        currentMenu->lastOn = itemOn;
+        M_ClearMenus ();
+        S_StartSound(NULL,sfx_swtchx);
+    }
+#endif
 	return true;
 	
       default:
