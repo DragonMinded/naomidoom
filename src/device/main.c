@@ -28,15 +28,17 @@ char stderr_buf[STDERR_LEN + 1];
 
 int _stderr_write(const char * const data, unsigned int len)
 {
-    uint32_t old_irq = irq_disable();
-    int location = strlen(stderr_buf);
-    int available = STDERR_LEN - location;
+    int amount;
 
-    int amount = available >= len ? len : available;
-    memcpy(stderr_buf + location, data, amount);
-    stderr_buf[location + amount] = 0;
+    ATOMIC({
+        int location = strlen(stderr_buf);
+        int available = STDERR_LEN - location;
+        amount = available >= len ? len : available;
 
-    irq_restore(old_irq);
+        memcpy(stderr_buf + location, data, amount);
+        stderr_buf[location + amount] = 0;
+    });
+
     return amount;
 }
 
@@ -78,12 +80,19 @@ void I_DrawErrorScreen()
     while ( 1 ) { thread_yield(); }
 }
 
+// To share the load between the video thread (polling controls) and the main
+// thread (reacting to polled controls).
+mutex_t control_mutex;
+
 int main()
 {
     // Set up arguments.
     myargc = 1;
     myargv = malloc(sizeof (myargv[0]) * myargc);
     myargv[0] = strdup("doom.bin");
+
+    // Make sure we have a mutex for control input ready.
+    mutex_init(&control_mutex);
 
     // Set up error handling.
     memset(stderr_buf, 0, STDERR_LEN + 1);
@@ -280,375 +289,380 @@ void I_StartTic (void)
     static uint64_t last_right_press = 0;
     static int sprint_active = 0;
 
-    // This seems like a good place to read key inputs.
-    ATOMIC({
-        // Send pending release events.
-        for (int evt = 0; evt < numpevents; evt++)
+    // Make sure that we don't step on the control read code in the video
+    // thread, which is there so that the G2 bus doesn't get overwhelmed
+    // when we try to DMA to the MIE at the same time as rendering video.
+    mutex_lock(&control_mutex);
+
+    // Send pending release events.
+    for (int evt = 0; evt < numpevents; evt++)
+    {
+        I_SendInput(ev_keyup, upevents[evt]);
+    }
+    numpevents = 0;
+
+    if (controls_available)
+    {
+        controls_available = 0;
+        controls_needed = 1;
+
+        jvs_buttons_t pressed = maple_buttons_pressed();
+        jvs_buttons_t released = maple_buttons_released();
+
+        if (pressed.psw1 || pressed.test)
         {
-            I_SendInput(ev_keyup, upevents[evt]);
+            // Request to go into system test mode.
+            enter_test_mode();
         }
-        numpevents = 0;
 
-        if (controls_available)
+        // "Enter" keypress, mapped to 1P start.
+        if (pressed.player1.start)
         {
-            controls_available = 0;
-            controls_needed = 1;
+            I_SendInput(ev_keydown, KEY_ENTER);
+        }
+        if (released.player1.start)
+        {
+            I_SendInput(ev_keyup, KEY_ENTER);
+        }
 
-            jvs_buttons_t pressed = maple_buttons_pressed();
-            jvs_buttons_t released = maple_buttons_released();
+        // "Escape" keypress, mapped to 2P start.
+        if (pressed.player2.start)
+        {
+            I_SendInput(ev_keydown, KEY_ESCAPE);
+        }
+        if (released.player2.start)
+        {
+            I_SendInput(ev_keyup, KEY_ESCAPE);
+        }
 
-            if (pressed.psw1 || pressed.test)
+        // Normal movement, strafing when strafe modifier held, sprinting when double-tapped.
+        if (pressed.player1.left)
+        {
+            if (sprint_active == 0)
             {
-                // Request to go into system test mode.
-                enter_test_mode();
-            }
-
-            // "Enter" keypress, mapped to 1P start.
-            if (pressed.player1.start)
-            {
-                I_SendInput(ev_keydown, KEY_ENTER);
-            }
-            if (released.player1.start)
-            {
-                I_SendInput(ev_keyup, KEY_ENTER);
-            }
-
-            // "Escape" keypress, mapped to 2P start.
-            if (pressed.player2.start)
-            {
-                I_SendInput(ev_keydown, KEY_ESCAPE);
-            }
-            if (released.player2.start)
-            {
-                I_SendInput(ev_keyup, KEY_ESCAPE);
-            }
-
-            // Normal movement, strafing when strafe modifier held, sprinting when double-tapped.
-            if (pressed.player1.left)
-            {
-                if (sprint_active == 0)
+                uint64_t cur_left_press = _get_time();
+                if (cur_left_press > 0)
                 {
-                    uint64_t cur_left_press = _get_time();
-                    if (cur_left_press > 0)
+                    // See if we can work out when the last tap was, for double-tapping
+                    // to sprint.
+                    if (last_left_press == 0)
                     {
-                        // See if we can work out when the last tap was, for double-tapping
-                        // to sprint.
-                        if (last_left_press == 0)
+                        // Our last tap was a sprint, or we have never gone left before.
+                        last_left_press = cur_left_press;
+                    }
+                    else
+                    {
+                        // If the last tap was the right amount of time, then simulate a
+                        // sprint key press.
+                        uint64_t us_apart = cur_left_press - last_left_press;
+                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
                         {
-                            // Our last tap was a sprint, or we have never gone left before.
+                            sprint_active |= LEFT_ACTIVE;
+                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                        }
+                        else
+                        {
+                            // Just overwrite the last tap.
                             last_left_press = cur_left_press;
                         }
-                        else
-                        {
-                            // If the last tap was the right amount of time, then simulate a
-                            // sprint key press.
-                            uint64_t us_apart = cur_left_press - last_left_press;
-                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
-                            {
-                                sprint_active |= LEFT_ACTIVE;
-                                I_SendInput(ev_keydown, KEY_RSHIFT);
-                            }
-                            else
-                            {
-                                // Just overwrite the last tap.
-                                last_left_press = cur_left_press;
-                            }
-                        }
                     }
                 }
-                else
-                {
-                    // Gotta keep track of the fact that we're still holding movement buttons.
-                    sprint_active |= LEFT_ACTIVE;
-                }
-                I_SendInput(ev_keydown, KEY_LEFTARROW);
             }
-            if (released.player1.left)
+            else
             {
-                // If we were sprinting we need to undo that.
-                int old_active = sprint_active;
-                sprint_active &= LEFT_INACTIVE;
-                if (old_active && !sprint_active)
-                {
-                    I_SendInput(ev_keyup, KEY_RSHIFT);
-                    last_forward_press = 0;
-                    last_backward_press = 0;
-                    last_left_press = 0;
-                    last_right_press = 0;
-                }
-                I_SendInput(ev_keyup, KEY_LEFTARROW);
+                // Gotta keep track of the fact that we're still holding movement buttons.
+                sprint_active |= LEFT_ACTIVE;
             }
+            I_SendInput(ev_keydown, KEY_LEFTARROW);
+        }
+        if (released.player1.left)
+        {
+            // If we were sprinting we need to undo that.
+            int old_active = sprint_active;
+            sprint_active &= LEFT_INACTIVE;
+            if (old_active && !sprint_active)
+            {
+                I_SendInput(ev_keyup, KEY_RSHIFT);
+                last_forward_press = 0;
+                last_backward_press = 0;
+                last_left_press = 0;
+                last_right_press = 0;
+            }
+            I_SendInput(ev_keyup, KEY_LEFTARROW);
+        }
 
-            if (pressed.player1.right)
+        if (pressed.player1.right)
+        {
+            if (sprint_active == 0)
             {
-                if (sprint_active == 0)
+                uint64_t cur_right_press = _get_time();
+                if (cur_right_press > 0)
                 {
-                    uint64_t cur_right_press = _get_time();
-                    if (cur_right_press > 0)
+                    // See if we can work out when the last tap was, for double-tapping
+                    // to sprint.
+                    if (last_right_press == 0)
                     {
-                        // See if we can work out when the last tap was, for double-tapping
-                        // to sprint.
-                        if (last_right_press == 0)
+                        // Our last tap was a sprint, or we have never gone right before.
+                        last_right_press = cur_right_press;
+                    }
+                    else
+                    {
+                        // If the last tap was the right amount of time, then simulate a
+                        // sprint key press.
+                        uint64_t us_apart = cur_right_press - last_right_press;
+                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
                         {
-                            // Our last tap was a sprint, or we have never gone right before.
+                            sprint_active |= RIGHT_ACTIVE;
+                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                        }
+                        else
+                        {
+                            // Just overwrite the last tap.
                             last_right_press = cur_right_press;
                         }
-                        else
-                        {
-                            // If the last tap was the right amount of time, then simulate a
-                            // sprint key press.
-                            uint64_t us_apart = cur_right_press - last_right_press;
-                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
-                            {
-                                sprint_active |= RIGHT_ACTIVE;
-                                I_SendInput(ev_keydown, KEY_RSHIFT);
-                            }
-                            else
-                            {
-                                // Just overwrite the last tap.
-                                last_right_press = cur_right_press;
-                            }
-                        }
                     }
                 }
-                else
-                {
-                    // Gotta keep track of the fact that we're still holding movement buttons.
-                    sprint_active |= RIGHT_ACTIVE;
-                }
-                I_SendInput(ev_keydown, KEY_RIGHTARROW);
             }
-            if (released.player1.right)
+            else
             {
-                // If we were sprinting we need to undo that.
-                int old_active = sprint_active;
-                sprint_active &= RIGHT_INACTIVE;
-                if (old_active && !sprint_active)
-                {
-                    I_SendInput(ev_keyup, KEY_RSHIFT);
-                    last_forward_press = 0;
-                    last_backward_press = 0;
-                    last_left_press = 0;
-                    last_right_press = 0;
-                }
-                I_SendInput(ev_keyup, KEY_RIGHTARROW);
+                // Gotta keep track of the fact that we're still holding movement buttons.
+                sprint_active |= RIGHT_ACTIVE;
             }
+            I_SendInput(ev_keydown, KEY_RIGHTARROW);
+        }
+        if (released.player1.right)
+        {
+            // If we were sprinting we need to undo that.
+            int old_active = sprint_active;
+            sprint_active &= RIGHT_INACTIVE;
+            if (old_active && !sprint_active)
+            {
+                I_SendInput(ev_keyup, KEY_RSHIFT);
+                last_forward_press = 0;
+                last_backward_press = 0;
+                last_left_press = 0;
+                last_right_press = 0;
+            }
+            I_SendInput(ev_keyup, KEY_RIGHTARROW);
+        }
 
-            if (pressed.player1.up)
+        if (pressed.player1.up)
+        {
+            if (sprint_active == 0)
             {
-                if (sprint_active == 0)
+                uint64_t cur_forward_press = _get_time();
+                if (cur_forward_press > 0)
                 {
-                    uint64_t cur_forward_press = _get_time();
-                    if (cur_forward_press > 0)
+                    // See if we can work out when the last tap was, for double-tapping
+                    // to sprint.
+                    if (last_forward_press == 0)
                     {
-                        // See if we can work out when the last tap was, for double-tapping
-                        // to sprint.
-                        if (last_forward_press == 0)
+                        // Our last tap was a sprint, or we have never gone forward before.
+                        last_forward_press = cur_forward_press;
+                    }
+                    else
+                    {
+                        // If the last tap was the right amount of time, then simulate a
+                        // sprint key press.
+                        uint64_t us_apart = cur_forward_press - last_forward_press;
+                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
                         {
-                            // Our last tap was a sprint, or we have never gone forward before.
+                            sprint_active |= FORWARD_ACTIVE;
+                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                        }
+                        else
+                        {
+                            // Just overwrite the last tap.
                             last_forward_press = cur_forward_press;
                         }
-                        else
-                        {
-                            // If the last tap was the right amount of time, then simulate a
-                            // sprint key press.
-                            uint64_t us_apart = cur_forward_press - last_forward_press;
-                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
-                            {
-                                sprint_active |= FORWARD_ACTIVE;
-                                I_SendInput(ev_keydown, KEY_RSHIFT);
-                            }
-                            else
-                            {
-                                // Just overwrite the last tap.
-                                last_forward_press = cur_forward_press;
-                            }
-                        }
                     }
                 }
-                else
-                {
-                    // Gotta keep track of the fact that we're still holding movement buttons.
-                    sprint_active |= FORWARD_ACTIVE;
-                }
-                I_SendInput(ev_keydown, KEY_UPARROW);
             }
-            if (released.player1.up)
+            else
             {
-                // If we were sprinting we need to undo that.
-                int old_active = sprint_active;
-                sprint_active &= FORWARD_INACTIVE;
-                if (old_active && !sprint_active)
-                {
-                    I_SendInput(ev_keyup, KEY_RSHIFT);
-                    last_forward_press = 0;
-                    last_backward_press = 0;
-                    last_left_press = 0;
-                    last_right_press = 0;
-                }
-                I_SendInput(ev_keyup, KEY_UPARROW);
+                // Gotta keep track of the fact that we're still holding movement buttons.
+                sprint_active |= FORWARD_ACTIVE;
             }
+            I_SendInput(ev_keydown, KEY_UPARROW);
+        }
+        if (released.player1.up)
+        {
+            // If we were sprinting we need to undo that.
+            int old_active = sprint_active;
+            sprint_active &= FORWARD_INACTIVE;
+            if (old_active && !sprint_active)
+            {
+                I_SendInput(ev_keyup, KEY_RSHIFT);
+                last_forward_press = 0;
+                last_backward_press = 0;
+                last_left_press = 0;
+                last_right_press = 0;
+            }
+            I_SendInput(ev_keyup, KEY_UPARROW);
+        }
 
-            if (pressed.player1.down)
+        if (pressed.player1.down)
+        {
+            if (sprint_active == 0)
             {
-                if (sprint_active == 0)
+                uint64_t cur_backward_press = _get_time();
+                if (cur_backward_press > 0)
                 {
-                    uint64_t cur_backward_press = _get_time();
-                    if (cur_backward_press > 0)
+                    // See if we can work out when the last tap was, for double-tapping
+                    // to sprint.
+                    if (last_backward_press == 0)
                     {
-                        // See if we can work out when the last tap was, for double-tapping
-                        // to sprint.
-                        if (last_backward_press == 0)
+                        // Our last tap was a sprint, or we have never gone backward before.
+                        last_backward_press = cur_backward_press;
+                    }
+                    else
+                    {
+                        // If the last tap was the right amount of time, then simulate a
+                        // sprint key press.
+                        uint64_t us_apart = cur_backward_press - last_backward_press;
+                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
                         {
-                            // Our last tap was a sprint, or we have never gone backward before.
+                            sprint_active |= BACKWARD_ACTIVE;
+                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                        }
+                        else
+                        {
+                            // Just overwrite the last tap.
                             last_backward_press = cur_backward_press;
                         }
-                        else
-                        {
-                            // If the last tap was the right amount of time, then simulate a
-                            // sprint key press.
-                            uint64_t us_apart = cur_backward_press - last_backward_press;
-                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
-                            {
-                                sprint_active |= BACKWARD_ACTIVE;
-                                I_SendInput(ev_keydown, KEY_RSHIFT);
-                            }
-                            else
-                            {
-                                // Just overwrite the last tap.
-                                last_backward_press = cur_backward_press;
-                            }
-                        }
                     }
                 }
-                else
+            }
+            else
+            {
+                // Gotta keep track of the fact that we're still holding movement buttons.
+                sprint_active |= BACKWARD_ACTIVE;
+            }
+            I_SendInput(ev_keydown, KEY_DOWNARROW);
+        }
+        if (released.player1.down)
+        {
+            // If we were sprinting we need to undo that.
+            int old_active = sprint_active;
+            sprint_active &= BACKWARD_INACTIVE;
+            if (old_active && !sprint_active)
+            {
+                I_SendInput(ev_keyup, KEY_RSHIFT);
+                last_forward_press = 0;
+                last_backward_press = 0;
+                last_left_press = 0;
+                last_right_press = 0;
+            }
+            I_SendInput(ev_keyup, KEY_DOWNARROW);
+        }
+
+        // Fire, mapped to 1P button 1.
+        if (pressed.player1.button1)
+        {
+            I_SendInput(ev_keydown, KEY_RCTRL);
+        }
+        if (released.player1.button1)
+        {
+            I_SendInput(ev_keyup, KEY_RCTRL);
+        }
+
+        // Use, mapped to 1P button 2.
+        if (pressed.player1.button2)
+        {
+            I_SendInput(ev_keydown, ' ');
+        }
+        if (released.player1.button2)
+        {
+            I_SendInput(ev_keyup, ' ');
+        }
+
+        // Strafe modifier, mapped to 1P button 3.
+        if (pressed.player1.button3)
+        {
+            I_SendInput(ev_keydown, KEY_RALT);
+        }
+        if (released.player1.button3)
+        {
+            I_SendInput(ev_keyup, KEY_RALT);
+        }
+
+        // For weapon switching, since Doom doesn't seem to have next/previous
+        // weapon buttons, we must do it ourselves!
+        player_t *player = NULL;
+        weapontype_t curWeapon;
+        if (consoleplayer >= 0 && consoleplayer < MAXPLAYERS)
+        {
+            player = &players[consoleplayer];
+            curWeapon = player->pendingweapon == wp_nochange ? player->readyweapon : player->pendingweapon;
+        }
+
+        // Previous weapon, mapped to 1P button 4.
+        if (pressed.player1.button4)
+        {
+            // Gotta figure out what weapon to try to swap to.
+            if (player != NULL)
+            {
+                int weaponPos = _weapon_to_position(curWeapon);
+                for (int try = 0; try < 6; try++)
                 {
-                    // Gotta keep track of the fact that we're still holding movement buttons.
-                    sprint_active |= BACKWARD_ACTIVE;
-                }
-                I_SendInput(ev_keydown, KEY_DOWNARROW);
-            }
-            if (released.player1.down)
-            {
-                // If we were sprinting we need to undo that.
-                int old_active = sprint_active;
-                sprint_active &= BACKWARD_INACTIVE;
-                if (old_active && !sprint_active)
-                {
-                    I_SendInput(ev_keyup, KEY_RSHIFT);
-                    last_forward_press = 0;
-                    last_backward_press = 0;
-                    last_left_press = 0;
-                    last_right_press = 0;
-                }
-                I_SendInput(ev_keyup, KEY_DOWNARROW);
-            }
+                    // Try to switch to the previous available weapon.
+                    weaponPos --;
+                    if (weaponPos < 0) { weaponPos = 6; }
 
-            // Fire, mapped to 1P button 1.
-            if (pressed.player1.button1)
-            {
-                I_SendInput(ev_keydown, KEY_RCTRL);
-            }
-            if (released.player1.button1)
-            {
-                I_SendInput(ev_keyup, KEY_RCTRL);
-            }
-
-            // Use, mapped to 1P button 2.
-            if (pressed.player1.button2)
-            {
-                I_SendInput(ev_keydown, ' ');
-            }
-            if (released.player1.button2)
-            {
-                I_SendInput(ev_keyup, ' ');
-            }
-
-            // Strafe modifier, mapped to 1P button 3.
-            if (pressed.player1.button3)
-            {
-                I_SendInput(ev_keydown, KEY_RALT);
-            }
-            if (released.player1.button3)
-            {
-                I_SendInput(ev_keyup, KEY_RALT);
-            }
-
-            // For weapon switching, since Doom doesn't seem to have next/previous
-            // weapon buttons, we must do it ourselves!
-            player_t *player = NULL;
-            weapontype_t curWeapon;
-            if (consoleplayer >= 0 && consoleplayer < MAXPLAYERS)
-            {
-                player = &players[consoleplayer];
-                curWeapon = player->pendingweapon == wp_nochange ? player->readyweapon : player->pendingweapon;
-            }
-
-            // Previous weapon, mapped to 1P button 4.
-            if (pressed.player1.button4)
-            {
-                // Gotta figure out what weapon to try to swap to.
-                if (player != NULL)
-                {
-                    int weaponPos = _weapon_to_position(curWeapon);
-                    for (int try = 0; try < 6; try++)
+                    // See if the player can switch to this weapon.
+                    if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
                     {
-                        // Try to switch to the previous available weapon.
-                        weaponPos --;
-                        if (weaponPos < 0) { weaponPos = 6; }
-
-                        // See if the player can switch to this weapon.
-                        if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
-                        {
-                            // They can! Simulate a press of that position.
-                            printf("Pressing key %c\n", '1' + weaponPos);
-                            I_SendInput(ev_keydown, '1' + weaponPos);
-                            I_SendDelayedInput(ev_keyup, '1' + weaponPos);
-                            break;
-                        }
+                        // They can! Simulate a press of that position.
+                        printf("Pressing key %c\n", '1' + weaponPos);
+                        I_SendInput(ev_keydown, '1' + weaponPos);
+                        I_SendDelayedInput(ev_keyup, '1' + weaponPos);
+                        break;
                     }
                 }
-            }
-
-            // Next weapon, mapped to 1P button 5.
-            if (pressed.player1.button5)
-            {
-                // Gotta figure out what weapon to try to swap to.
-                if (player != NULL)
-                {
-                    int weaponPos = _weapon_to_position(curWeapon);
-                    for (int try = 0; try < 6; try++)
-                    {
-                        // Try to switch to the next available weapon.
-                        weaponPos ++;
-                        if (weaponPos > 6) { weaponPos = 0; }
-
-                        // See if the player can switch to this weapon.
-                        if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
-                        {
-                            // They can! Simulate a press of that position.
-                            printf("Pressing key %c\n", '1' + weaponPos);
-                            I_SendInput(ev_keydown, '1' + weaponPos);
-                            I_SendDelayedInput(ev_keyup, '1' + weaponPos);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Automap modifier, mapped to 1P button 6.
-            if (pressed.player1.button6)
-            {
-                I_SendInput(ev_keydown, KEY_TAB);
-                I_SendDelayedInput(ev_keyup, KEY_TAB);
-            }
-            if (released.player1.button6)
-            {
-                I_SendInput(ev_keydown, KEY_TAB);
-                I_SendDelayedInput(ev_keyup, KEY_TAB);
             }
         }
-    });
+
+        // Next weapon, mapped to 1P button 5.
+        if (pressed.player1.button5)
+        {
+            // Gotta figure out what weapon to try to swap to.
+            if (player != NULL)
+            {
+                int weaponPos = _weapon_to_position(curWeapon);
+                for (int try = 0; try < 6; try++)
+                {
+                    // Try to switch to the next available weapon.
+                    weaponPos ++;
+                    if (weaponPos > 6) { weaponPos = 0; }
+
+                    // See if the player can switch to this weapon.
+                    if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
+                    {
+                        // They can! Simulate a press of that position.
+                        printf("Pressing key %c\n", '1' + weaponPos);
+                        I_SendInput(ev_keydown, '1' + weaponPos);
+                        I_SendDelayedInput(ev_keyup, '1' + weaponPos);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Automap modifier, mapped to 1P button 6.
+        if (pressed.player1.button6)
+        {
+            I_SendInput(ev_keydown, KEY_TAB);
+            I_SendDelayedInput(ev_keyup, KEY_TAB);
+        }
+        if (released.player1.button6)
+        {
+            I_SendInput(ev_keydown, KEY_TAB);
+            I_SendDelayedInput(ev_keyup, KEY_TAB);
+        }
+    }
+
+    // Safe to let video thread read inputs again.
+    mutex_unlock(&control_mutex);
 }
 
 int mkdir(const char *_path, mode_t __mode)

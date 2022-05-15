@@ -29,6 +29,9 @@ extern int controls_available;
 extern float percent_empty;
 extern int m_volume;
 
+// Shared with main.c
+extern mutex_t control_mutex;
+
 void _disableAnyVideoUpdates()
 {
     thread_stop(video_thread);
@@ -95,14 +98,14 @@ void * video(void * param)
         }
 
         // Now, poll for buttons where it is safe.
-        ATOMIC({
-            if (controls_needed)
-            {
-                controls_needed = 0;
-                controls_available = 1;
-                maple_poll_buttons();
-            }
-        });
+        mutex_lock(&control_mutex);
+        if (controls_needed)
+        {
+            controls_needed = 0;
+            controls_available = 1;
+            maple_poll_buttons();
+        }
+        mutex_unlock(&control_mutex);
 
 #ifdef NAOMI_DEBUG
         // Calculate instantaneous FPS.
