@@ -696,6 +696,9 @@ typedef struct
     int music_volume;
 } doom_settings_t;
 
+#define DOOM_EEPROM_SIZE 8
+#define DOOM_EEPROM_MIN_SIZE 8
+
 static int settings_loaded = 0;
 static doom_settings_t settings;
 
@@ -713,7 +716,32 @@ doom_settings_t *_naomi_load_settings()
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
         {
-            // TODO: Grab settings from EEPROM here.
+            if (eeprom.game.size >= DOOM_EEPROM_MIN_SIZE)
+            {
+                if (memcmp(eeprom.game.data, "DOOM", 4) == 0)
+                {
+                    // Cool, let's figure out what version of data this is.
+                    switch(eeprom.game.data[4])
+                    {
+                        case 1:
+                        {
+                            if (eeprom.game.data[5] == 0 || eeprom.game.data[5] == 1)
+                            {
+                                settings.show_messages = eeprom.game.data[5];
+                            }
+                            if (eeprom.game.data[6] >= 0 && eeprom.game.data[6] <= 15)
+                            {
+                                settings.music_volume = eeprom.game.data[6];
+                            }
+                            if (eeprom.game.data[7] >= 0 && eeprom.game.data[7] <= 15)
+                            {
+                                settings.sfx_volume = eeprom.game.data[7];
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         settings_loaded = 1;
@@ -751,7 +779,16 @@ void naomi_save_settings()
     eeprom_t eeprom;
     if (eeprom_read(&eeprom) == 0)
     {
-        // TODO: Format a new EEPROM and write it here.
+        // Format the game settings.
+        eeprom.game.size = DOOM_EEPROM_SIZE;
+        memcpy(eeprom.game.data, "DOOM", 4);
+        eeprom.game.data[4] = 1;
+        eeprom.game.data[5] = settings.show_messages;
+        eeprom.game.data[6] = settings.music_volume;
+        eeprom.game.data[7] = settings.sfx_volume;
+
+        // Write it back!
+        eeprom_write(&eeprom);
     }
 
     // Since we overwrote settings, they're "loaded" now.
