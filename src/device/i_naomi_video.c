@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include <naomi/video.h>
 #include <naomi/color.h>
 #include <naomi/ta.h>
@@ -10,6 +12,8 @@
 #include <naomi/maple.h>
 #include <naomi/sprite/sprite.h>
 #include "../v_video.h"
+#include "../m_swap.h"
+#include "../hu_stuff.h"
 
 static uint32_t video_thread;
 static texture_description_t *outtex[2];
@@ -250,4 +254,68 @@ void I_FinishUpdate (void)
 void I_ReadScreen (byte* scr)
 {
     memcpy(scr, screens[0], SCREENWIDTH * SCREENHEIGHT);
+}
+
+// Defined in hu_stuff.c
+extern patch_t *hu_font[HU_FONTSIZE];
+
+void V_DrawChar(int x, int y, patch_t *patch, int dbl)
+{
+    y -= (SHORT(patch->topoffset) * (dbl ? 2 : 1));
+    x -= (SHORT(patch->leftoffset) * (dbl ? 2 : 1));
+
+    uint32_t *bank = ta_palette_bank(TA_PALETTE_CLUT8, 0);
+    int w = SHORT(patch->width);
+    for (int col = 0; col < w; x += (dbl ? 2 : 1), col ++)
+    {
+        column_t *column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
+
+        // step through the posts in a column
+        while (column->topdelta != 0xff)
+        {
+            byte *source = (byte *)column + 3;
+            int count = column->length;
+            int row = y + (column->topdelta) * (dbl ? 2 : 1);
+
+            while (count--)
+            {
+                // Manually scale to 2x
+                color_t color = ta_palette_reverse_entry(bank[*source++]);
+                if (dbl)
+                {
+                    video_draw_pixel(x + 1, row, color);
+                    video_draw_pixel(x, row++, color);
+                    video_draw_pixel(x + 1, row, color);
+                }
+                video_draw_pixel(x, row++, color);
+            }
+            column = (column_t *)((byte *)column + column->length + 4);
+        }
+    }
+}
+
+void V_DrawText(int x, int y, char *msg, ...)
+{
+    if (msg)
+    {
+        char buffer[2048];
+        va_list args;
+        va_start(args, msg);
+        int length = vsnprintf(buffer, 2047, msg, args);
+        va_end(args);
+
+        for (int i = 0; i < length; i++)
+        {
+            int c = toupper(buffer[i]) - HU_FONTSTART;
+            if (c < 0 || c> HU_FONTSIZE)
+            {
+                x += 8;
+                continue;
+            }
+
+            int w = SHORT(hu_font[c]->width);
+            V_DrawChar(x, y, hu_font[c], 1);
+            x += (w * 2);
+        }
+    }
 }

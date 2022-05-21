@@ -18,7 +18,12 @@
 #include "../doomstat.h"
 #include "../d_main.h"
 #include "../m_argv.h"
+#include "../m_menu.h"
 #include "../d_event.h"
+#include "../r_defs.h"
+#include "../z_zone.h"
+#include "../w_wad.h"
+#include "../hu_stuff.h"
 
 int controls_available = 0;
 int controls_needed = 0;
@@ -128,51 +133,6 @@ int main()
     D_DoomMain();
 
     return 0;
-}
-
-int test()
-{
-    // Set up a test executable that currently only displays version info for now.
-    video_init(VIDEO_COLOR_1555);
-    video_set_background_color(rgb(0, 0, 0));
-
-    while ( 1 )
-    {
-        // First, poll the buttons and act accordingly.
-        maple_poll_buttons();
-        jvs_buttons_t buttons = maple_buttons_pressed();
-
-        if (buttons.psw1 || buttons.test)
-        {
-            // Request to go into system test mode.
-            enter_test_mode();
-        }
-
-        // Display build date and version information.
-        char *lines[] = {
-            "Doom for the Sega Naomi",
-            "Ported by DragonMinded",
-            "No settings here yet!",
-            "",
-            "Build date: xxxx-xx-xx",
-            "Release version: 1.0 alpha 2",
-            "",
-            "press [test] to exit",
-        };
-
-        int year = (BUILD_DATE / 10000);
-        int month = (BUILD_DATE - (year * 10000)) / 100;
-        int day = BUILD_DATE % 100;
-        sprintf(&lines[4][12], "%04d-%02d-%02d", year, month, day);
-
-        for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
-        {
-            int len = strlen(lines[i]);
-            video_draw_debug_text((video_width() - 8 * len) / 2, 100 + (i * 10), rgb(255, 255, 255), lines[i]);
-        }
-
-        video_display_on_vblank();
-    }
 }
 
 // Max number of microseconds between forward taps to consider a sprint.
@@ -811,4 +771,375 @@ void naomi_set_music_volume(int val)
 {
     settings_loaded = 1;
     settings.music_volume = val;
+}
+
+// Defined in d_main.c
+extern char *wadfiles[MAXWADFILES];
+void FindResponseFile(void);
+void IdentifyVersion(void);
+
+// Defined in i_naomi_video.c
+void I_SetPalette(byte* palette);
+void V_DrawChar(int x, int y, patch_t *patch, int dbl);
+void V_DrawText(int x, int y, char *msg, ...);
+
+// Defined in m_menu.c
+extern short whichSkull;
+extern char skullName[2][9];
+
+#define SCREEN_MAIN 0
+#define SCREEN_SETTINGS 1
+#define SCREEN_CREDITS 2
+
+int test()
+{
+    // Set up arguments.
+    myargc = 1;
+    myargv = malloc(sizeof (myargv[0]) * myargc);
+    myargv[0] = strdup("doom.bin");
+
+    // Make sure we have a mutex for control input ready.
+    mutex_init(&control_mutex);
+
+    // Set up error handling.
+    memset(stderr_buf, 0, STDERR_LEN + 1);
+    hook_stdio_calls( &error_hook );
+
+    // Set up a test executable that uses parts of doom to display settings.
+    video_init(VIDEO_COLOR_1555);
+    video_set_background_color(rgb(0, 0, 0));
+
+    // Then, enable console capture but disable console display if
+    // we are not in debug mode.
+    console_init(16);
+
+#ifndef NAOMI_CONSOLE
+    // Hide the debug console, we don't want to see it!
+    console_set_visible(0);
+#endif
+
+    // Init our filesystem.
+    if (romfs_init_default() != 0)
+    {
+        fprintf(stderr, "Failed to init filesystem!");
+        fflush(stderr);
+        I_DrawErrorScreen();
+    }
+
+    // Manually initialize what we need from doom.
+    FindResponseFile();
+    IdentifyVersion();
+    Z_Init();
+    W_InitMultipleFiles (wadfiles);
+    HU_Init();
+    M_Init();
+
+    // This is a bit of a hack, but set the palette so we can do manual LUT.
+    I_SetPalette(W_CacheLumpName("PLAYPAL", PU_CACHE));
+
+    // Load our EEPROM settings.
+    naomi_load_settings();
+
+    int screen = SCREEN_MAIN;
+    int count = 0;
+    int main_cursor = 0;
+    int settings_cursor = 0;
+    while ( 1 )
+    {
+        // First, poll the buttons and act accordingly.
+        maple_poll_buttons();
+        jvs_buttons_t buttons = maple_buttons_pressed();
+
+        switch(screen)
+        {
+            case SCREEN_MAIN:
+            {
+                if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
+                {
+                    if (main_cursor == 0)
+                    {
+                        // Settings menu.
+                        screen = SCREEN_SETTINGS;
+                        settings_cursor = 0;
+                    }
+                    else if(main_cursor == 2)
+                    {
+                        // Credits menu.
+                        screen = SCREEN_CREDITS;
+                    }
+                    else if (main_cursor == 4)
+                    {
+                        // Back to system test menu.
+                        naomi_save_settings();
+                        enter_test_mode();
+                    }
+                }
+                else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
+                {
+                    if (main_cursor == 0)
+                    {
+                        main_cursor = 2;
+                    }
+                    else if (main_cursor == 2)
+                    {
+                        main_cursor = 4;
+                    }
+                    else if (main_cursor == 4)
+                    {
+                        // Only wrap around if using svc to move.
+                        if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
+                        {
+                            main_cursor = 0;
+                        }
+                    }
+                }
+                else if(buttons.player1.up || buttons.player2.up)
+                {
+                    if (main_cursor == 2)
+                    {
+                        main_cursor = 0;
+                    }
+                    else if (main_cursor == 4)
+                    {
+                        main_cursor = 2;
+                    }
+                }
+
+                // Display build date and version information.
+                char *lines[] = {
+                    "Settings",
+                    "",
+                    "Credits",
+                    "",
+                    "Exit",
+                };
+
+                // Draw it doom font style.
+                int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
+                for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+                {
+                    V_DrawText(100, top + (i * 20), lines[i]);
+
+                    // Also draw the skull to show menu.
+                    if (i == main_cursor)
+                    {
+                        V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
+                    }
+                }
+                break;
+            }
+            case SCREEN_SETTINGS:
+            {
+                if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
+                {
+                    if (settings_cursor == 0)
+                    {
+                        // Message setting
+                        naomi_set_show_messages(1 - naomi_get_show_messages());
+                    }
+                    else if(settings_cursor == 2)
+                    {
+                        // SFX volume setting
+                        if (naomi_get_sfx_volume() == 15)
+                        {
+                            naomi_set_sfx_volume(0);
+                        }
+                        else
+                        {
+                            naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                        }
+                    }
+                    else if (settings_cursor == 4)
+                    {
+                        // Music volume setting
+                        if (naomi_get_music_volume() == 15)
+                        {
+                            naomi_set_music_volume(0);
+                        }
+                        else
+                        {
+                            naomi_set_music_volume(naomi_get_music_volume() + 1);
+                        }
+                    }
+                    else if (settings_cursor == 6)
+                    {
+                        // Exit
+                        screen = SCREEN_MAIN;
+                    }
+                }
+                if (buttons.player1.left || buttons.player2.left)
+                {
+                    if (settings_cursor == 0)
+                    {
+                        // Message setting
+                        naomi_set_show_messages(1 - naomi_get_show_messages());
+                    }
+                    else if(settings_cursor == 2)
+                    {
+                        // SFX volume setting
+                        if (naomi_get_sfx_volume() > 0)
+                        {
+                            naomi_set_sfx_volume(naomi_get_sfx_volume() - 1);
+                        }
+                    }
+                    else if (settings_cursor == 4)
+                    {
+                        // Music volume setting
+                        if (naomi_get_music_volume() > 0)
+                        {
+                            naomi_set_music_volume(naomi_get_music_volume() - 1);
+                        }
+                    }
+                }
+                if (buttons.player1.right || buttons.player2.right)
+                {
+                    if (settings_cursor == 0)
+                    {
+                        // Message setting
+                        naomi_set_show_messages(1 - naomi_get_show_messages());
+                    }
+                    else if(settings_cursor == 2)
+                    {
+                        // SFX volume setting
+                        if (naomi_get_sfx_volume() < 15)
+                        {
+                            naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                        }
+                    }
+                    else if (settings_cursor == 4)
+                    {
+                        // Music volume setting
+                        if (naomi_get_music_volume() < 15)
+                        {
+                            naomi_set_music_volume(naomi_get_music_volume() + 1);
+                        }
+                    }
+                }
+                else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
+                {
+                    if (settings_cursor == 0)
+                    {
+                        settings_cursor = 2;
+                    }
+                    else if (settings_cursor == 2)
+                    {
+                        settings_cursor = 4;
+                    }
+                    else if (settings_cursor == 4)
+                    {
+                        settings_cursor = 6;
+                    }
+                    else if (settings_cursor == 6)
+                    {
+                        // Only wrap around if using svc to move.
+                        if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
+                        {
+                            settings_cursor = 0;
+                        }
+                    }
+                }
+                else if(buttons.player1.up || buttons.player2.up)
+                {
+                    if (settings_cursor == 2)
+                    {
+                        settings_cursor = 0;
+                    }
+                    else if (settings_cursor == 4)
+                    {
+                        settings_cursor = 2;
+                    }
+                    else if (settings_cursor == 6)
+                    {
+                        settings_cursor = 4;
+                    }
+                }
+
+                // Display build date and version information.
+                char *lines[] = {
+                    "Messages: XXX",
+                    "",
+                    "SFX Volume: XX/XX",
+                    "",
+                    "Music Volume: XX/XX",
+                    "",
+                    "Exit",
+                };
+
+                // I tried to be clever here with strstr() but that gets screwed up
+                // after the first loop.
+                char *lineloc[] = {
+                    lines[0] + 10,
+                    lines[2] + 12,
+                    lines[4] + 14,
+                };
+
+                // Hack to insert current setting.
+                sprintf(lineloc[0], naomi_get_show_messages() ? "On" : "Off");
+                sprintf(lineloc[1], "%d/15", naomi_get_sfx_volume());
+                sprintf(lineloc[2], "%d/15", naomi_get_music_volume());
+
+                // Draw it doom font style.
+                int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
+                for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+                {
+                    V_DrawText(100, top + (i * 20), lines[i]);
+
+                    // Also draw the skull to show menu.
+                    if (i == settings_cursor)
+                    {
+                        V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
+                    }
+                }
+                break;
+            }
+            case SCREEN_CREDITS:
+            {
+                if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
+                {
+                    // Back to main menu.
+                    screen = SCREEN_MAIN;
+                }
+
+                // Display build date and version information.
+                char *lines[] = {
+                    "Doom for the Sega Naomi",
+                    "Ported by DragonMinded",
+                    "",
+                    "Build date: xxxx-xx-xx",
+                    "Release version: 1.0 alpha 3",
+                    "",
+                    "Exit",
+                };
+
+                // Hack the build date into the correct line.
+                int year = (BUILD_DATE / 10000);
+                int month = (BUILD_DATE - (year * 10000)) / 100;
+                int day = BUILD_DATE % 100;
+                sprintf(&lines[3][12], "%04d-%02d-%02d", year, month, day);
+
+                // Draw it doom font style.
+                int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
+                for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+                {
+                    V_DrawText(100, top + (i * 20), lines[i]);
+
+                    // Also draw the skull to show menu.
+                    if (i == 6)
+                    {
+                        V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
+                    }
+                }
+                break;
+            }
+        }
+
+        // Display it!
+        video_display_on_vblank();
+
+        // Tick the menu skulls. Doom main loop is 35fps, we run at 60, so do a crude divide by 2.
+        if (count++ & 1)
+        {
+            M_Ticker();
+        }
+    }
 }

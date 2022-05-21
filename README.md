@@ -34,7 +34,6 @@ The following WADs have been tested working with Doom for Sega Naomi:
 
 * The inputs are currently not configurable at all.
 * Load/Save game are completely untested.
-* There are no settings in test mode, where game settings should live.
 * Clicking/ticking sound heard from speakers in shareware version while playing music.
 * Does not respect attract mode setting from Naomi system settings.
 
