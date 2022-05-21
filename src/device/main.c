@@ -652,12 +652,14 @@ int access(const char *path, int axx)
 typedef struct
 {
     int show_messages;
+    int show_options;
     int sfx_volume;
     int music_volume;
 } doom_settings_t;
 
-#define DOOM_EEPROM_SIZE 8
-#define DOOM_EEPROM_MIN_SIZE 8
+#define DOOM_EEPROM_VER 2
+#define DOOM_EEPROM_VER1_SIZE 8
+#define DOOM_EEPROM_VER2_SIZE 12
 
 static int settings_loaded = 0;
 static doom_settings_t settings;
@@ -672,17 +674,27 @@ doom_settings_t *_naomi_load_settings()
         settings.music_volume = 8;
         settings.sfx_volume = 8;
         settings.show_messages = 1;
+        settings.show_options = 1;
 
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
         {
-            if (eeprom.game.size >= DOOM_EEPROM_MIN_SIZE)
+            if (eeprom.game.size >= DOOM_EEPROM_VER1_SIZE)
             {
                 if (memcmp(eeprom.game.data, "DOOM", 4) == 0)
                 {
                     // Cool, let's figure out what version of data this is.
                     switch(eeprom.game.data[4])
                     {
+                        case 2:
+                        {
+                            if (eeprom.game.size >= DOOM_EEPROM_VER2_SIZE)
+                            {
+                                settings.show_options = eeprom.game.data[8] ? 1 : 0;
+                            }
+
+                            // Fall-through to load other settings.
+                        }
                         case 1:
                         {
                             if (eeprom.game.data[5] == 0 || eeprom.game.data[5] == 1)
@@ -734,18 +746,26 @@ int naomi_get_music_volume()
     return cur_settings->music_volume;
 }
 
+int naomi_get_show_options()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->show_options;
+}
+
 void naomi_save_settings()
 {
     eeprom_t eeprom;
     if (eeprom_read(&eeprom) == 0)
     {
         // Format the game settings.
-        eeprom.game.size = DOOM_EEPROM_SIZE;
+        eeprom.game.size = DOOM_EEPROM_VER2_SIZE;
+        memset(eeprom.game.data, 0, eeprom.game.size);
         memcpy(eeprom.game.data, "DOOM", 4);
-        eeprom.game.data[4] = 1;
+        eeprom.game.data[4] = DOOM_EEPROM_VER;
         eeprom.game.data[5] = settings.show_messages;
         eeprom.game.data[6] = settings.music_volume;
         eeprom.game.data[7] = settings.sfx_volume;
+        eeprom.game.data[8] = settings.show_options;
 
         // Write it back!
         eeprom_write(&eeprom);
@@ -771,6 +791,12 @@ void naomi_set_music_volume(int val)
 {
     settings_loaded = 1;
     settings.music_volume = val;
+}
+
+void naomi_set_show_options(int val)
+{
+    settings_loaded = 1;
+    settings.show_options = val;
 }
 
 // Defined in d_main.c
@@ -963,6 +989,11 @@ int test()
                     }
                     else if (settings_cursor == 6)
                     {
+                        // Options in game setting
+                        naomi_set_show_options(1 - naomi_get_show_options());
+                    }
+                    else if (settings_cursor == 8)
+                    {
                         // Exit
                         screen = SCREEN_MAIN;
                     }
@@ -990,6 +1021,11 @@ int test()
                             naomi_set_music_volume(naomi_get_music_volume() - 1);
                         }
                     }
+                    else if (settings_cursor == 6)
+                    {
+                        // Options in game setting
+                        naomi_set_show_options(1 - naomi_get_show_options());
+                    }
                 }
                 if (buttons.player1.right || buttons.player2.right)
                 {
@@ -1014,6 +1050,11 @@ int test()
                             naomi_set_music_volume(naomi_get_music_volume() + 1);
                         }
                     }
+                    else if (settings_cursor == 6)
+                    {
+                        // Options in game setting
+                        naomi_set_show_options(1 - naomi_get_show_options());
+                    }
                 }
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
@@ -1030,6 +1071,10 @@ int test()
                         settings_cursor = 6;
                     }
                     else if (settings_cursor == 6)
+                    {
+                        settings_cursor = 8;
+                    }
+                    else if (settings_cursor == 8)
                     {
                         // Only wrap around if using svc to move.
                         if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
@@ -1052,6 +1097,10 @@ int test()
                     {
                         settings_cursor = 4;
                     }
+                    else if (settings_cursor == 8)
+                    {
+                        settings_cursor = 6;
+                    }
                 }
 
                 // Display build date and version information.
@@ -1062,6 +1111,8 @@ int test()
                     "",
                     "Music Volume: XX/XX",
                     "",
+                    "In Game Options: XXXXXX",
+                    "",
                     "Exit",
                 };
 
@@ -1071,12 +1122,14 @@ int test()
                     lines[0] + 10,
                     lines[2] + 12,
                     lines[4] + 14,
+                    lines[6] + 17,
                 };
 
                 // Hack to insert current setting.
                 sprintf(lineloc[0], naomi_get_show_messages() ? "On" : "Off");
                 sprintf(lineloc[1], "%d/15", naomi_get_sfx_volume());
                 sprintf(lineloc[2], "%d/15", naomi_get_music_volume());
+                sprintf(lineloc[3], naomi_get_show_options() ? "Shown" : "Hidden");
 
                 // Draw it doom font style.
                 int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;

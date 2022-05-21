@@ -1048,7 +1048,18 @@ void M_EndGameResponse(int ch)
 #endif
 	return;
 		
-    currentMenu->lastOn = itemOn;
+#ifdef NAOMI
+    // Hack to stop the hidden option from being selected
+    if (!naomi_get_show_options())
+    {
+        currentMenu->lastOn = itemOn - 1;
+    }
+    else
+#endif
+    {
+        currentMenu->lastOn = itemOn;
+    }
+
     M_ClearMenus ();
     D_StartTitle ();
 }
@@ -1791,7 +1802,10 @@ boolean M_Responder (event_t* ev)
     return false;
 }
 
-
+#ifdef NAOMI
+// Defined in device/main.c
+int naomi_get_show_options();
+#endif
 
 //
 // M_StartControlPanel
@@ -1801,6 +1815,36 @@ void M_StartControlPanel (void)
     // intro might call this repeatedly
     if (menuactive)
 	return;
+
+#ifdef NAOMI
+    // Hack to allow for hiding/showing the options menu on Sega Naomi.
+    if (naomi_get_show_options())
+    {
+        // Display normal options menu here.
+        MainMenu[1].status = 1;
+        strcpy(MainMenu[1].name, "M_OPTION");
+        MainMenu[1].routine = M_Options;
+        MainMenu[1].alphaKey = 'o';
+    }
+    else
+    {
+        // Only display end game if we are in-game.
+        if (usergame || netgame)
+        {
+            MainMenu[1].status = 1;
+            strcpy(MainMenu[1].name, "M_ENDGAM");
+            MainMenu[1].routine = M_EndGame;
+            MainMenu[1].alphaKey = 'e';
+        }
+        else
+        {
+            MainMenu[1].status = -1;
+            strcpy(MainMenu[1].name, "");
+            MainMenu[1].routine = 0;
+            MainMenu[1].alphaKey = 0;
+        }
+    }
+#endif
     
     menuactive = 1;
     currentMenu = &MainDef;         // JDC
