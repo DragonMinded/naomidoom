@@ -15,7 +15,7 @@
 #include "../m_swap.h"
 #include "../hu_stuff.h"
 
-static uint32_t video_thread;
+static uint32_t video_thread = 0;
 static texture_description_t *outtex[2];
 static int whichtex = 0;
 static float xscale;
@@ -38,7 +38,10 @@ extern mutex_t control_mutex;
 
 void _disableAnyVideoUpdates()
 {
-    thread_stop(video_thread);
+    if (video_thread)
+    {
+        thread_stop(video_thread);
+    }
 }
 
 void _enableAnyVideoUpdates()
