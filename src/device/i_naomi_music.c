@@ -5,9 +5,9 @@
 #include "../i_sound.h"
 
 #define INVALID_HANDLE -1
-#define SAMPLELENGTH 8192
-#define SILENCELENGTH 1024
-#define SAMPLERATE 22050
+#define SAMPLELENGTH 16384
+#define SILENCELENGTH 2048
+#define SAMPLERATE 44100
 #define MAX_VOLUME 15
 
 typedef struct
