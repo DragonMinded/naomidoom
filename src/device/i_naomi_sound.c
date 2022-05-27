@@ -157,6 +157,12 @@ static float logtable[16] = {
     1.000,
 };
 
+// Defined in menu, for determining if we're in-game or not.
+int M_InGame();
+
+// Defined in main.c, for determining if we should be silent during attract sequences.
+int naomi_get_silent_attract();
+
 void _bookkeep_sounds()
 {
     for (int i = 0; i < MAX_SOUNDS; i++)
@@ -190,6 +196,13 @@ int I_StartSound(int id, int vol, int sep, int pitch, int priority)
         {
             if (sounds[i].leftchan == 0)
             {
+                if (naomi_get_silent_attract() && !M_InGame())
+                {
+                    // Hack to hush up sounds when in attract mode.
+                    leftvol = 0;
+                    rightvol = 0;
+                }
+
                 sounds[i].leftchan = audio_play_registered_sound(links[id].handle, SPEAKER_LEFT, logtable[(int)leftvol]);
                 sounds[i].rightchan = audio_play_registered_sound(links[id].handle, SPEAKER_RIGHT, logtable[(int)rightvol]);
                 return sounds[i].leftchan;
@@ -249,6 +262,13 @@ void I_UpdateSoundParams(int handle, int vol, int sep, int pitch)
 
             if (leftvol > 15.0) { leftvol = 15.0; }
             if (rightvol > 15.0) { rightvol = 15.0; }
+
+            if (naomi_get_silent_attract() && !M_InGame())
+            {
+                // Hack to hush up sounds when in attract mode.
+                leftvol = 0;
+                rightvol = 0;
+            }
 
             audio_change_sound_instance_volume(sounds[i].leftchan, logtable[(int)leftvol]);
             audio_change_sound_instance_volume(sounds[i].rightchan, logtable[(int)rightvol]);
