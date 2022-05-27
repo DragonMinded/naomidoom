@@ -45,6 +45,12 @@ static uint32_t *silence;
 // How many samples out of the total did we write last wake-up.
 float percent_empty = 0.0;
 
+// Defined in menu, for determining if we're in-game or not.
+int M_InGame();
+
+// Defined in main.c, for determining if we should be silent during attract sequences.
+int naomi_get_silent_attract();
+
 // Specifically so errors aren't annoying to display.
 void _pauseAnySong()
 {
@@ -70,6 +76,19 @@ static float logtable[16] = {
     0.972,
     1.000,
 };
+
+void audio_set_music_volume()
+{
+    if (naomi_get_silent_attract() && !M_InGame())
+    {
+        // Shhh!
+        audio_change_ringbuffer_volume(0.0);
+    }
+    else
+    {
+        audio_change_ringbuffer_volume(logtable[m_volume]);
+    }
+}
 
 void *audiothread_music(void *param)
 {
@@ -108,7 +127,7 @@ void *audiothread_music(void *param)
     int written = 0;
 
     audio_register_ringbuffer(AUDIO_FORMAT_16BIT, SAMPLERATE, SAMPLELENGTH);
-    audio_change_ringbuffer_volume(logtable[m_volume]);
+    audio_set_music_volume();
 
     while (inst->exit == 0)
     {
@@ -245,7 +264,7 @@ void I_SetMusicVolume(int volume)
 {
     m_volume = volume < 0 ? 0 : volume;
     m_volume = m_volume > 15 ? 15 : m_volume;
-    audio_change_ringbuffer_volume(logtable[m_volume]);
+    audio_set_music_volume();
 }
 
 // PAUSE game handling.

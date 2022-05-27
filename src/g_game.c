@@ -101,6 +101,9 @@ boolean		respawnmonsters;
 int             gameepisode; 
 int             gamemap; 
  
+#ifdef NAOMI
+boolean         demoinitializing = false;
+#endif
 boolean         paused; 
 boolean         sendpause;             	// send a pause event next tic 
 boolean         sendsave;             	// send a save event next tic 
@@ -1611,12 +1614,18 @@ void G_DoPlayDemo (void)
     }
 
     // don't spend a lot of time in loadlevel 
+#ifdef NAOMI
+    demoinitializing = true;
+#endif
     precache = false;
     G_InitNew (skill, episode, map); 
     precache = true; 
 
     usergame = false; 
-    demoplayback = true; 
+    demoplayback = true;
+#ifdef NAOMI
+    demoinitializing = false;
+#endif
 } 
 
 //

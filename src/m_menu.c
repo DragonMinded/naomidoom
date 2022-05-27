@@ -1805,6 +1805,13 @@ boolean M_Responder (event_t* ev)
 #ifdef NAOMI
 // Defined in device/main.c
 int naomi_get_show_options();
+
+extern boolean demoinitializing;
+
+int M_InGame (void)
+{
+    return ((usergame && !demoinitializing) || netgame) ? 1 : 0;
+}
 #endif
 
 //
@@ -1829,7 +1836,7 @@ void M_StartControlPanel (void)
     else
     {
         // Only display end game if we are in-game.
-        if (usergame || netgame)
+        if (M_InGame())
         {
             MainMenu[1].status = 1;
             strcpy(MainMenu[1].name, "M_ENDGAM");

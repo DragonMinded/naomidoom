@@ -76,6 +76,7 @@ void I_DrawErrorScreen()
 {
     _pauseAnySong();
     _disableAnyVideoUpdates();
+    fflush(stderr);
 
     video_init(VIDEO_COLOR_1555);
     video_set_background_color(rgb(48, 48, 48));
@@ -122,7 +123,6 @@ int main()
     if (romfs_init_default() != 0)
     {
         fprintf(stderr, "Failed to init filesystem!");
-        fflush(stderr);
         I_DrawErrorScreen();
     }
 
@@ -651,6 +651,7 @@ int access(const char *path, int axx)
 
 typedef struct
 {
+    int silent_attract;
     int show_messages;
     int show_options;
     int sfx_volume;
@@ -671,6 +672,7 @@ doom_settings_t *_naomi_load_settings()
     if (settings_loaded == 0)
     {
         // Default settings.
+        settings.silent_attract = 0;
         settings.music_volume = 8;
         settings.sfx_volume = 8;
         settings.show_messages = 1;
@@ -679,6 +681,10 @@ doom_settings_t *_naomi_load_settings()
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
         {
+            // Look up system setting for silent attract sounds, since the Naomi BIOS has
+            // this setting built-in.
+            settings.silent_attract = eeprom.system.attract_sounds == ATTRACT_SOUNDS_OFF;
+
             if (eeprom.game.size >= DOOM_EEPROM_VER1_SIZE)
             {
                 if (memcmp(eeprom.game.data, "DOOM", 4) == 0)
@@ -726,6 +732,12 @@ void naomi_load_settings()
 {
     // Just trigger an EEPROM load.
     _naomi_load_settings();
+}
+
+int naomi_get_silent_attract()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->silent_attract;
 }
 
 int naomi_get_show_messages()
@@ -848,7 +860,6 @@ int test()
     if (romfs_init_default() != 0)
     {
         fprintf(stderr, "Failed to init filesystem!");
-        fflush(stderr);
         I_DrawErrorScreen();
     }
 
