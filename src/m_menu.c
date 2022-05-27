@@ -231,6 +231,13 @@ void M_StopMessage(void);
 void M_ClearMenus (void);
 
 
+#ifdef NAOMI
+// Defined in i_naomi_sound.c
+void S_OverrideAttractSetting(int override);
+#else
+#define S_OverrideAttractSetting(x)
+#endif
+
 
 
 //
@@ -707,7 +714,9 @@ void M_QuickSaveResponse(int ch)
 #endif
     {
 	M_DoSave(quickSaveSlot);
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_swtchx);
+    S_OverrideAttractSetting(0);
     }
 }
 
@@ -715,7 +724,9 @@ void M_QuickSave(void)
 {
     if (!usergame)
     {
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_oof);
+    S_OverrideAttractSetting(0);
 	return;
     }
 
@@ -748,7 +759,9 @@ void M_QuickLoadResponse(int ch)
 #endif
     {
 	M_LoadSelect(quickSaveSlot);
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_swtchx);
+    S_OverrideAttractSetting(0);
     }
 }
 
@@ -1036,6 +1049,18 @@ void M_ChangeMessages(int choice)
 }
 
 
+#ifdef NAOMI
+// Defined in device/main.c
+int naomi_get_show_options();
+
+extern boolean demoinitializing;
+
+int M_InGame (void)
+{
+    return ((usergame && !demoinitializing) || netgame) ? 1 : 0;
+}
+#endif
+
 //
 // M_EndGame
 //
@@ -1069,7 +1094,9 @@ void M_EndGame(int choice)
     choice = 0;
     if (!usergame)
     {
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_oof);
+    S_OverrideAttractSetting(0);
 	return;
     }
 	
@@ -1147,10 +1174,12 @@ void M_QuitResponse(int ch)
 	return;
     if (!netgame)
     {
+    S_OverrideAttractSetting(1);
 	if (gamemode == commercial)
 	    S_StartSound(NULL,quitsounds2[(gametic>>2)&7]);
 	else
 	    S_StartSound(NULL,quitsounds[(gametic>>2)&7]);
+    S_OverrideAttractSetting(0);
 	I_WaitVBL(105);
     }
     I_Quit ();
@@ -1572,7 +1601,9 @@ boolean M_Responder (event_t* ev)
 	    messageRoutine(ch);
 			
 	menuactive = false;
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_swtchx);
+    S_OverrideAttractSetting(0);
 	return true;
     }
 	
@@ -1591,14 +1622,18 @@ boolean M_Responder (event_t* ev)
 	    if (automapactive || chat_on)
 		return false;
 	    M_SizeDisplay(0);
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_stnmov);
+        S_OverrideAttractSetting(0);
 	    return true;
 				
 	  case KEY_EQUALS:        // Screen size up
 	    if (automapactive || chat_on)
 		return false;
 	    M_SizeDisplay(1);
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_stnmov);
+        S_OverrideAttractSetting(0);
 	    return true;
 				
 	  case KEY_F1:            // Help key
@@ -1610,18 +1645,24 @@ boolean M_Responder (event_t* ev)
 	      currentMenu = &ReadDef1;
 	    
 	    itemOn = 0;
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    return true;
 				
 	  case KEY_F2:            // Save
 	    M_StartControlPanel();
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_SaveGame(0);
 	    return true;
 				
 	  case KEY_F3:            // Load
 	    M_StartControlPanel();
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_LoadGame(0);
 	    return true;
 				
@@ -1630,37 +1671,51 @@ boolean M_Responder (event_t* ev)
 	    M_StartControlPanel ();
 	    currentMenu = &SoundDef;
 	    itemOn = sfx_vol;
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    return true;
 #endif
 				
 	  case KEY_F5:            // Detail toggle
 	    M_ChangeDetail(0);
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    return true;
 				
 	  case KEY_F6:            // Quicksave
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_QuickSave();
 	    return true;
 				
 	  case KEY_F7:            // End game
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_EndGame(0);
 	    return true;
 				
 	  case KEY_F8:            // Toggle messages
 	    M_ChangeMessages(0);
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    return true;
 				
 	  case KEY_F9:            // Quickload
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_QuickLoad();
 	    return true;
 				
 	  case KEY_F10:           // Quit DOOM
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    M_QuitDOOM(0);
 	    return true;
 				
@@ -1681,7 +1736,9 @@ boolean M_Responder (event_t* ev)
 	if (ch == KEY_ESCAPE)
 	{
 	    M_StartControlPanel ();
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	    return true;
 	}
 	return false;
@@ -1697,7 +1754,9 @@ boolean M_Responder (event_t* ev)
 	    if (itemOn+1 > currentMenu->numitems-1)
 		itemOn = 0;
 	    else itemOn++;
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_pstop);
+        S_OverrideAttractSetting(0);
 	} while(currentMenu->menuitems[itemOn].status==-1);
 	return true;
 		
@@ -1707,7 +1766,9 @@ boolean M_Responder (event_t* ev)
 	    if (!itemOn)
 		itemOn = currentMenu->numitems-1;
 	    else itemOn--;
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_pstop);
+        S_OverrideAttractSetting(0);
 	} while(currentMenu->menuitems[itemOn].status==-1);
 	return true;
 
@@ -1715,7 +1776,9 @@ boolean M_Responder (event_t* ev)
 	if (currentMenu->menuitems[itemOn].routine &&
 	    currentMenu->menuitems[itemOn].status == 2)
 	{
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_stnmov);
+        S_OverrideAttractSetting(0);
 	    currentMenu->menuitems[itemOn].routine(0);
 	}
 	return true;
@@ -1724,7 +1787,9 @@ boolean M_Responder (event_t* ev)
 	if (currentMenu->menuitems[itemOn].routine &&
 	    currentMenu->menuitems[itemOn].status == 2)
 	{
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_stnmov);
+        S_OverrideAttractSetting(0);
 	    currentMenu->menuitems[itemOn].routine(1);
 	}
 	return true;
@@ -1737,12 +1802,16 @@ boolean M_Responder (event_t* ev)
 	    if (currentMenu->menuitems[itemOn].status == 2)
 	    {
 		currentMenu->menuitems[itemOn].routine(1);      // right arrow
+        S_OverrideAttractSetting(1);
 		S_StartSound(NULL,sfx_stnmov);
+        S_OverrideAttractSetting(0);
 	    }
 	    else
 	    {
 		currentMenu->menuitems[itemOn].routine(itemOn);
+        S_OverrideAttractSetting(1);
 		S_StartSound(NULL,sfx_pistol);
+        S_OverrideAttractSetting(0);
 	    }
 	}
 	return true;
@@ -1751,7 +1820,9 @@ boolean M_Responder (event_t* ev)
 #ifndef NAOMI
 	currentMenu->lastOn = itemOn;
 	M_ClearMenus ();
+    S_OverrideAttractSetting(1);
 	S_StartSound(NULL,sfx_swtchx);
+    S_OverrideAttractSetting(0);
 	return true;
 		
       case KEY_BACKSPACE:
@@ -1768,14 +1839,18 @@ boolean M_Responder (event_t* ev)
 #endif
 	    currentMenu = currentMenu->prevMenu;
 	    itemOn = currentMenu->lastOn;
+        S_OverrideAttractSetting(1);
 	    S_StartSound(NULL,sfx_swtchn);
+        S_OverrideAttractSetting(0);
 	}
 #ifdef NAOMI
     else
     {
         currentMenu->lastOn = itemOn;
         M_ClearMenus ();
+        S_OverrideAttractSetting(1);
         S_StartSound(NULL,sfx_swtchx);
+        S_OverrideAttractSetting(0);
     }
 #endif
 	return true;
@@ -1785,14 +1860,18 @@ boolean M_Responder (event_t* ev)
 	    if (currentMenu->menuitems[i].alphaKey == ch)
 	    {
 		itemOn = i;
+        S_OverrideAttractSetting(1);
 		S_StartSound(NULL,sfx_pstop);
+        S_OverrideAttractSetting(0);
 		return true;
 	    }
 	for (i = 0;i <= itemOn;i++)
 	    if (currentMenu->menuitems[i].alphaKey == ch)
 	    {
 		itemOn = i;
+        S_OverrideAttractSetting(1);
 		S_StartSound(NULL,sfx_pstop);
+        S_OverrideAttractSetting(0);
 		return true;
 	    }
 	break;
@@ -1801,18 +1880,6 @@ boolean M_Responder (event_t* ev)
 
     return false;
 }
-
-#ifdef NAOMI
-// Defined in device/main.c
-int naomi_get_show_options();
-
-extern boolean demoinitializing;
-
-int M_InGame (void)
-{
-    return ((usergame && !demoinitializing) || netgame) ? 1 : 0;
-}
-#endif
 
 //
 // M_StartControlPanel
