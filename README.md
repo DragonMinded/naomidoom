@@ -34,7 +34,6 @@ The following WADs have been tested working with Doom for Sega Naomi:
 
 * The inputs are currently not configurable at all.
 * Load/Save game are completely untested.
-* Does not respect attract mode setting from Naomi system settings.
 
 ## Acknowledgements
 
