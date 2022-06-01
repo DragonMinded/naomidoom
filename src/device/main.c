@@ -241,6 +241,10 @@ weapontype_t _position_to_weapon(int pos)
     }
 }
 
+// Forward definitions from below EEPROM section.
+int naomi_get_double_tap_sprint();
+int naomi_get_hold_use_to_sprint();
+
 void I_StartTic (void)
 {
     static uint64_t last_forward_press = 0;
@@ -298,220 +302,244 @@ void I_StartTic (void)
         // Normal movement, strafing when strafe modifier held, sprinting when double-tapped.
         if (pressed.player1.left)
         {
-            if (sprint_active == 0)
+            if (naomi_get_double_tap_sprint())
             {
-                uint64_t cur_left_press = _get_time();
-                if (cur_left_press > 0)
+                if (sprint_active == 0)
                 {
-                    // See if we can work out when the last tap was, for double-tapping
-                    // to sprint.
-                    if (last_left_press == 0)
+                    uint64_t cur_left_press = _get_time();
+                    if (cur_left_press > 0)
                     {
-                        // Our last tap was a sprint, or we have never gone left before.
-                        last_left_press = cur_left_press;
-                    }
-                    else
-                    {
-                        // If the last tap was the right amount of time, then simulate a
-                        // sprint key press.
-                        uint64_t us_apart = cur_left_press - last_left_press;
-                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                        // See if we can work out when the last tap was, for double-tapping
+                        // to sprint.
+                        if (last_left_press == 0)
                         {
-                            sprint_active |= LEFT_ACTIVE;
-                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                            // Our last tap was a sprint, or we have never gone left before.
+                            last_left_press = cur_left_press;
                         }
                         else
                         {
-                            // Just overwrite the last tap.
-                            last_left_press = cur_left_press;
+                            // If the last tap was the right amount of time, then simulate a
+                            // sprint key press.
+                            uint64_t us_apart = cur_left_press - last_left_press;
+                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                            {
+                                sprint_active |= LEFT_ACTIVE;
+                                I_SendInput(ev_keydown, KEY_RSHIFT);
+                            }
+                            else
+                            {
+                                // Just overwrite the last tap.
+                                last_left_press = cur_left_press;
+                            }
                         }
                     }
                 }
-            }
-            else
-            {
-                // Gotta keep track of the fact that we're still holding movement buttons.
-                sprint_active |= LEFT_ACTIVE;
+                else
+                {
+                    // Gotta keep track of the fact that we're still holding movement buttons.
+                    sprint_active |= LEFT_ACTIVE;
+                }
             }
             I_SendInput(ev_keydown, KEY_LEFTARROW);
         }
         if (released.player1.left)
         {
-            // If we were sprinting we need to undo that.
-            int old_active = sprint_active;
-            sprint_active &= LEFT_INACTIVE;
-            if (old_active && !sprint_active)
+            if (naomi_get_double_tap_sprint())
             {
-                I_SendInput(ev_keyup, KEY_RSHIFT);
-                last_forward_press = 0;
-                last_backward_press = 0;
-                last_left_press = 0;
-                last_right_press = 0;
+                // If we were sprinting we need to undo that.
+                int old_active = sprint_active;
+                sprint_active &= LEFT_INACTIVE;
+                if (old_active && !sprint_active)
+                {
+                    I_SendInput(ev_keyup, KEY_RSHIFT);
+                    last_forward_press = 0;
+                    last_backward_press = 0;
+                    last_left_press = 0;
+                    last_right_press = 0;
+                }
             }
             I_SendInput(ev_keyup, KEY_LEFTARROW);
         }
 
         if (pressed.player1.right)
         {
-            if (sprint_active == 0)
+            if (naomi_get_double_tap_sprint())
             {
-                uint64_t cur_right_press = _get_time();
-                if (cur_right_press > 0)
+                if (sprint_active == 0)
                 {
-                    // See if we can work out when the last tap was, for double-tapping
-                    // to sprint.
-                    if (last_right_press == 0)
+                    uint64_t cur_right_press = _get_time();
+                    if (cur_right_press > 0)
                     {
-                        // Our last tap was a sprint, or we have never gone right before.
-                        last_right_press = cur_right_press;
-                    }
-                    else
-                    {
-                        // If the last tap was the right amount of time, then simulate a
-                        // sprint key press.
-                        uint64_t us_apart = cur_right_press - last_right_press;
-                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                        // See if we can work out when the last tap was, for double-tapping
+                        // to sprint.
+                        if (last_right_press == 0)
                         {
-                            sprint_active |= RIGHT_ACTIVE;
-                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                            // Our last tap was a sprint, or we have never gone right before.
+                            last_right_press = cur_right_press;
                         }
                         else
                         {
-                            // Just overwrite the last tap.
-                            last_right_press = cur_right_press;
+                            // If the last tap was the right amount of time, then simulate a
+                            // sprint key press.
+                            uint64_t us_apart = cur_right_press - last_right_press;
+                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                            {
+                                sprint_active |= RIGHT_ACTIVE;
+                                I_SendInput(ev_keydown, KEY_RSHIFT);
+                            }
+                            else
+                            {
+                                // Just overwrite the last tap.
+                                last_right_press = cur_right_press;
+                            }
                         }
                     }
                 }
-            }
-            else
-            {
-                // Gotta keep track of the fact that we're still holding movement buttons.
-                sprint_active |= RIGHT_ACTIVE;
+                else
+                {
+                    // Gotta keep track of the fact that we're still holding movement buttons.
+                    sprint_active |= RIGHT_ACTIVE;
+                }
             }
             I_SendInput(ev_keydown, KEY_RIGHTARROW);
         }
         if (released.player1.right)
         {
-            // If we were sprinting we need to undo that.
-            int old_active = sprint_active;
-            sprint_active &= RIGHT_INACTIVE;
-            if (old_active && !sprint_active)
+            if (naomi_get_double_tap_sprint())
             {
-                I_SendInput(ev_keyup, KEY_RSHIFT);
-                last_forward_press = 0;
-                last_backward_press = 0;
-                last_left_press = 0;
-                last_right_press = 0;
+                // If we were sprinting we need to undo that.
+                int old_active = sprint_active;
+                sprint_active &= RIGHT_INACTIVE;
+                if (old_active && !sprint_active)
+                {
+                    I_SendInput(ev_keyup, KEY_RSHIFT);
+                    last_forward_press = 0;
+                    last_backward_press = 0;
+                    last_left_press = 0;
+                    last_right_press = 0;
+                }
             }
             I_SendInput(ev_keyup, KEY_RIGHTARROW);
         }
 
         if (pressed.player1.up)
         {
-            if (sprint_active == 0)
+            if (naomi_get_double_tap_sprint())
             {
-                uint64_t cur_forward_press = _get_time();
-                if (cur_forward_press > 0)
+                if (sprint_active == 0)
                 {
-                    // See if we can work out when the last tap was, for double-tapping
-                    // to sprint.
-                    if (last_forward_press == 0)
+                    uint64_t cur_forward_press = _get_time();
+                    if (cur_forward_press > 0)
                     {
-                        // Our last tap was a sprint, or we have never gone forward before.
-                        last_forward_press = cur_forward_press;
-                    }
-                    else
-                    {
-                        // If the last tap was the right amount of time, then simulate a
-                        // sprint key press.
-                        uint64_t us_apart = cur_forward_press - last_forward_press;
-                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                        // See if we can work out when the last tap was, for double-tapping
+                        // to sprint.
+                        if (last_forward_press == 0)
                         {
-                            sprint_active |= FORWARD_ACTIVE;
-                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                            // Our last tap was a sprint, or we have never gone forward before.
+                            last_forward_press = cur_forward_press;
                         }
                         else
                         {
-                            // Just overwrite the last tap.
-                            last_forward_press = cur_forward_press;
+                            // If the last tap was the right amount of time, then simulate a
+                            // sprint key press.
+                            uint64_t us_apart = cur_forward_press - last_forward_press;
+                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                            {
+                                sprint_active |= FORWARD_ACTIVE;
+                                I_SendInput(ev_keydown, KEY_RSHIFT);
+                            }
+                            else
+                            {
+                                // Just overwrite the last tap.
+                                last_forward_press = cur_forward_press;
+                            }
                         }
                     }
                 }
-            }
-            else
-            {
-                // Gotta keep track of the fact that we're still holding movement buttons.
-                sprint_active |= FORWARD_ACTIVE;
+                else
+                {
+                    // Gotta keep track of the fact that we're still holding movement buttons.
+                    sprint_active |= FORWARD_ACTIVE;
+                }
             }
             I_SendInput(ev_keydown, KEY_UPARROW);
         }
         if (released.player1.up)
         {
-            // If we were sprinting we need to undo that.
-            int old_active = sprint_active;
-            sprint_active &= FORWARD_INACTIVE;
-            if (old_active && !sprint_active)
+            if (naomi_get_double_tap_sprint())
             {
-                I_SendInput(ev_keyup, KEY_RSHIFT);
-                last_forward_press = 0;
-                last_backward_press = 0;
-                last_left_press = 0;
-                last_right_press = 0;
+                // If we were sprinting we need to undo that.
+                int old_active = sprint_active;
+                sprint_active &= FORWARD_INACTIVE;
+                if (old_active && !sprint_active)
+                {
+                    I_SendInput(ev_keyup, KEY_RSHIFT);
+                    last_forward_press = 0;
+                    last_backward_press = 0;
+                    last_left_press = 0;
+                    last_right_press = 0;
+                }
             }
             I_SendInput(ev_keyup, KEY_UPARROW);
         }
 
         if (pressed.player1.down)
         {
-            if (sprint_active == 0)
+            if (naomi_get_double_tap_sprint())
             {
-                uint64_t cur_backward_press = _get_time();
-                if (cur_backward_press > 0)
+                if (sprint_active == 0)
                 {
-                    // See if we can work out when the last tap was, for double-tapping
-                    // to sprint.
-                    if (last_backward_press == 0)
+                    uint64_t cur_backward_press = _get_time();
+                    if (cur_backward_press > 0)
                     {
-                        // Our last tap was a sprint, or we have never gone backward before.
-                        last_backward_press = cur_backward_press;
-                    }
-                    else
-                    {
-                        // If the last tap was the right amount of time, then simulate a
-                        // sprint key press.
-                        uint64_t us_apart = cur_backward_press - last_backward_press;
-                        if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                        // See if we can work out when the last tap was, for double-tapping
+                        // to sprint.
+                        if (last_backward_press == 0)
                         {
-                            sprint_active |= BACKWARD_ACTIVE;
-                            I_SendInput(ev_keydown, KEY_RSHIFT);
+                            // Our last tap was a sprint, or we have never gone backward before.
+                            last_backward_press = cur_backward_press;
                         }
                         else
                         {
-                            // Just overwrite the last tap.
-                            last_backward_press = cur_backward_press;
+                            // If the last tap was the right amount of time, then simulate a
+                            // sprint key press.
+                            uint64_t us_apart = cur_backward_press - last_backward_press;
+                            if (us_apart > 1000 && us_apart <= MAX_DOUBLE_TAP_SPRINT)
+                            {
+                                sprint_active |= BACKWARD_ACTIVE;
+                                I_SendInput(ev_keydown, KEY_RSHIFT);
+                            }
+                            else
+                            {
+                                // Just overwrite the last tap.
+                                last_backward_press = cur_backward_press;
+                            }
                         }
                     }
                 }
-            }
-            else
-            {
-                // Gotta keep track of the fact that we're still holding movement buttons.
-                sprint_active |= BACKWARD_ACTIVE;
+                else
+                {
+                    // Gotta keep track of the fact that we're still holding movement buttons.
+                    sprint_active |= BACKWARD_ACTIVE;
+                }
             }
             I_SendInput(ev_keydown, KEY_DOWNARROW);
         }
         if (released.player1.down)
         {
-            // If we were sprinting we need to undo that.
-            int old_active = sprint_active;
-            sprint_active &= BACKWARD_INACTIVE;
-            if (old_active && !sprint_active)
+            if (naomi_get_double_tap_sprint())
             {
-                I_SendInput(ev_keyup, KEY_RSHIFT);
-                last_forward_press = 0;
-                last_backward_press = 0;
-                last_left_press = 0;
-                last_right_press = 0;
+                // If we were sprinting we need to undo that.
+                int old_active = sprint_active;
+                sprint_active &= BACKWARD_INACTIVE;
+                if (old_active && !sprint_active)
+                {
+                    I_SendInput(ev_keyup, KEY_RSHIFT);
+                    last_forward_press = 0;
+                    last_backward_press = 0;
+                    last_left_press = 0;
+                    last_right_press = 0;
+                }
             }
             I_SendInput(ev_keyup, KEY_DOWNARROW);
         }
@@ -530,10 +558,18 @@ void I_StartTic (void)
         if (pressed.player1.button2)
         {
             I_SendInput(ev_keydown, ' ');
+            if (naomi_get_hold_use_to_sprint())
+            {
+                I_SendInput(ev_keydown, KEY_RSHIFT);
+            }
         }
         if (released.player1.button2)
         {
             I_SendInput(ev_keyup, ' ');
+            if (naomi_get_hold_use_to_sprint())
+            {
+                I_SendInput(ev_keyup, KEY_RSHIFT);
+            }
         }
 
         // Strafe modifier, mapped to 1P button 3.
@@ -654,6 +690,8 @@ typedef struct
     int silent_attract;
     int show_messages;
     int show_options;
+    int hold_use_to_sprint;
+    int double_tap_sprint;
     int sfx_volume;
     int music_volume;
 } doom_settings_t;
@@ -677,6 +715,8 @@ doom_settings_t *_naomi_load_settings()
         settings.sfx_volume = 8;
         settings.show_messages = 1;
         settings.show_options = 1;
+        settings.hold_use_to_sprint = 0;
+        settings.double_tap_sprint = 1;
 
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
@@ -697,24 +737,29 @@ doom_settings_t *_naomi_load_settings()
                             if (eeprom.game.size >= DOOM_EEPROM_VER2_SIZE)
                             {
                                 settings.show_options = eeprom.game.data[8] ? 1 : 0;
+                                settings.hold_use_to_sprint = eeprom.game.data[9] ? 1 : 0;
+                                settings.double_tap_sprint = eeprom.game.data[10] ? 0 : 1;
                             }
 
                             // Fall-through to load other settings.
                         }
                         case 1:
                         {
-                            if (eeprom.game.data[5] == 0 || eeprom.game.data[5] == 1)
+                            if (eeprom.game.size >= DOOM_EEPROM_VER1_SIZE)
                             {
-                                settings.show_messages = eeprom.game.data[5];
+                                settings.show_messages = eeprom.game.data[5] ? 1 : 0;
+
+                                if (eeprom.game.data[6] >= 0 && eeprom.game.data[6] <= 15)
+                                {
+                                    settings.music_volume = eeprom.game.data[6];
+                                }
+
+                                if (eeprom.game.data[7] >= 0 && eeprom.game.data[7] <= 15)
+                                {
+                                    settings.sfx_volume = eeprom.game.data[7];
+                                }
                             }
-                            if (eeprom.game.data[6] >= 0 && eeprom.game.data[6] <= 15)
-                            {
-                                settings.music_volume = eeprom.game.data[6];
-                            }
-                            if (eeprom.game.data[7] >= 0 && eeprom.game.data[7] <= 15)
-                            {
-                                settings.sfx_volume = eeprom.game.data[7];
-                            }
+
                             break;
                         }
                     }
@@ -764,6 +809,18 @@ int naomi_get_show_options()
     return cur_settings->show_options;
 }
 
+int naomi_get_hold_use_to_sprint()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->hold_use_to_sprint;
+}
+
+int naomi_get_double_tap_sprint()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->double_tap_sprint;
+}
+
 void naomi_save_settings()
 {
     eeprom_t eeprom;
@@ -778,6 +835,8 @@ void naomi_save_settings()
         eeprom.game.data[6] = settings.music_volume;
         eeprom.game.data[7] = settings.sfx_volume;
         eeprom.game.data[8] = settings.show_options;
+        eeprom.game.data[9] = settings.hold_use_to_sprint;
+        eeprom.game.data[10] = 1 - settings.double_tap_sprint;
 
         // Write it back!
         eeprom_write(&eeprom);
@@ -811,6 +870,18 @@ void naomi_set_show_options(int val)
     settings.show_options = val;
 }
 
+void naomi_set_hold_use_to_sprint(int val)
+{
+    settings_loaded = 1;
+    settings.hold_use_to_sprint = val;
+}
+
+void naomi_set_double_tap_sprint(int val)
+{
+    settings_loaded = 1;
+    settings.double_tap_sprint = val;
+}
+
 // Defined in d_main.c
 extern char *wadfiles[MAXWADFILES];
 void FindResponseFile(void);
@@ -828,6 +899,7 @@ extern char skullName[2][9];
 #define SCREEN_MAIN 0
 #define SCREEN_SETTINGS 1
 #define SCREEN_CREDITS 2
+#define SCREEN_CONTROLS 3
 
 int test()
 {
@@ -881,6 +953,7 @@ int test()
     int count = 0;
     int main_cursor = 0;
     int settings_cursor = 0;
+    int controls_cursor = 0;
     while ( 1 )
     {
         // First, poll the buttons and act accordingly.
@@ -904,11 +977,18 @@ int test()
                         }
                         case 2:
                         {
+                            // Controls menu.
+                            screen = SCREEN_CONTROLS;
+                            controls_cursor = 0;
+                            break;
+                        }
+                        case 4:
+                        {
                             // Credits menu.
                             screen = SCREEN_CREDITS;
                             break;
                         }
-                        case 4:
+                        case 6:
                         {
                             // Back to system test menu.
                             naomi_save_settings();
@@ -920,7 +1000,7 @@ int test()
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
                     // Pop down to the next menu item if we're not at the bottom.
-                    if (main_cursor < 4)
+                    if (main_cursor < 6)
                     {
                         main_cursor += 2;
                     }
@@ -942,6 +1022,8 @@ int test()
                 // Display build date and version information.
                 char *lines[] = {
                     "Settings",
+                    "",
+                    "Controls",
                     "",
                     "Credits",
                     "",
@@ -1142,6 +1224,122 @@ int test()
 
                     // Also draw the skull to show menu.
                     if (i == settings_cursor)
+                    {
+                        V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
+                    }
+                }
+                break;
+            }
+            case SCREEN_CONTROLS:
+            {
+                if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
+                {
+                    switch(controls_cursor)
+                    {
+                        case 0:
+                        {
+                            // Double tap sprint enabled.
+                            naomi_set_double_tap_sprint(1 - naomi_get_double_tap_sprint());
+                            break;
+                        }
+                        case 2:
+                        {
+                            // Hold use to sprint enabled.
+                            naomi_set_hold_use_to_sprint(1 - naomi_get_hold_use_to_sprint());
+                            break;
+                        }
+                        case 4:
+                        {
+                            // Exit
+                            screen = SCREEN_MAIN;
+                            break;
+                        }
+                    }
+                }
+                if (buttons.player1.left || buttons.player2.left)
+                {
+                    switch(controls_cursor)
+                    {
+                        case 0:
+                        {
+                            // Double tap sprint enabled.
+                            naomi_set_double_tap_sprint(1 - naomi_get_double_tap_sprint());
+                            break;
+                        }
+                        case 2:
+                        {
+                            // Hold use to sprint enabled.
+                            naomi_set_hold_use_to_sprint(1 - naomi_get_hold_use_to_sprint());
+                            break;
+                        }
+                    }
+                }
+                if (buttons.player1.right || buttons.player2.right)
+                {
+                    switch(controls_cursor)
+                    {
+                        case 0:
+                        {
+                            // Double tap sprint enabled.
+                            naomi_set_double_tap_sprint(1 - naomi_get_double_tap_sprint());
+                            break;
+                        }
+                        case 2:
+                        {
+                            // Hold use to sprint enabled.
+                            naomi_set_hold_use_to_sprint(1 - naomi_get_hold_use_to_sprint());
+                            break;
+                        }
+                    }
+                }
+                else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
+                {
+                    if (controls_cursor < 4)
+                    {
+                        controls_cursor += 2;
+                    }
+                    // Only wrap around if using svc to move.
+                    else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
+                    {
+                        controls_cursor = 0;
+                    }
+                }
+                else if(buttons.player1.up || buttons.player2.up)
+                {
+                    if (controls_cursor > 0)
+                    {
+                        controls_cursor -= 2;
+                    }
+                }
+
+                // Display build date and version information.
+                char *lines[] = {
+                    "Double-Tap Sprint: XXX",
+                    "",
+                    "Hold Use to Sprint: XXX",
+                    "",
+                    "Exit",
+                };
+
+                // I tried to be clever here with strstr() but that gets screwed up
+                // after the first loop.
+                char *lineloc[] = {
+                    lines[0] + 19,
+                    lines[2] + 20,
+                };
+
+                // Hack to insert current setting.
+                sprintf(lineloc[0], naomi_get_double_tap_sprint() ? "On" : "Off");
+                sprintf(lineloc[1], naomi_get_hold_use_to_sprint() ? "On" : "Off");
+
+                // Draw it doom font style.
+                int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
+                for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+                {
+                    V_DrawText(100, top + (i * 20), lines[i]);
+
+                    // Also draw the skull to show menu.
+                    if (i == controls_cursor)
                     {
                         V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
                     }
