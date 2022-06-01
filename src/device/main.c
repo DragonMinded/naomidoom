@@ -244,6 +244,7 @@ weapontype_t _position_to_weapon(int pos)
 // Forward definitions from below EEPROM section.
 int naomi_get_double_tap_sprint();
 int naomi_get_hold_use_to_sprint();
+int naomi_get_extra_weapon_switch();
 
 void I_StartTic (void)
 {
@@ -609,7 +610,6 @@ void I_StartTic (void)
                     if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
                     {
                         // They can! Simulate a press of that position.
-                        printf("Pressing key %c\n", '1' + weaponPos);
                         I_SendInput(ev_keydown, '1' + weaponPos);
                         I_SendDelayedInput(ev_keyup, '1' + weaponPos);
                         break;
@@ -635,7 +635,6 @@ void I_StartTic (void)
                     if (P_PlayerCanSwitchWeapon(player, _position_to_weapon(weaponPos)))
                     {
                         // They can! Simulate a press of that position.
-                        printf("Pressing key %c\n", '1' + weaponPos);
                         I_SendInput(ev_keydown, '1' + weaponPos);
                         I_SendDelayedInput(ev_keyup, '1' + weaponPos);
                         break;
@@ -654,6 +653,59 @@ void I_StartTic (void)
         {
             I_SendInput(ev_keydown, KEY_TAB);
             I_SendDelayedInput(ev_keyup, KEY_TAB);
+        }
+
+        // If we've enabled P2 1-6 for fast weapon switching.
+        if (naomi_get_extra_weapon_switch())
+        {
+            if (pressed.player2.button1)
+            {
+                I_SendInput(ev_keydown, '2');
+            }
+            if (released.player2.button1)
+            {
+                I_SendInput(ev_keyup, '2');
+            }
+            if (pressed.player2.button2)
+            {
+                I_SendInput(ev_keydown, '3');
+            }
+            if (released.player2.button2)
+            {
+                I_SendInput(ev_keyup, '3');
+            }
+            if (pressed.player2.button3)
+            {
+                I_SendInput(ev_keydown, '4');
+            }
+            if (released.player2.button3)
+            {
+                I_SendInput(ev_keyup, '4');
+            }
+            if (pressed.player2.button4)
+            {
+                I_SendInput(ev_keydown, '5');
+            }
+            if (released.player2.button4)
+            {
+                I_SendInput(ev_keyup, '5');
+            }
+            if (pressed.player2.button5)
+            {
+                I_SendInput(ev_keydown, '6');
+            }
+            if (released.player2.button5)
+            {
+                I_SendInput(ev_keyup, '6');
+            }
+            if (pressed.player2.button6)
+            {
+                I_SendInput(ev_keydown, '7');
+            }
+            if (released.player2.button6)
+            {
+                I_SendInput(ev_keyup, '7');
+            }
         }
     }
 
@@ -692,6 +744,7 @@ typedef struct
     int show_options;
     int hold_use_to_sprint;
     int double_tap_sprint;
+    int extra_weapon_switch;
     int sfx_volume;
     int music_volume;
 } doom_settings_t;
@@ -717,6 +770,7 @@ doom_settings_t *_naomi_load_settings()
         settings.show_options = 1;
         settings.hold_use_to_sprint = 0;
         settings.double_tap_sprint = 1;
+        settings.extra_weapon_switch = 0;
 
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
@@ -739,6 +793,7 @@ doom_settings_t *_naomi_load_settings()
                                 settings.show_options = eeprom.game.data[8] ? 1 : 0;
                                 settings.hold_use_to_sprint = eeprom.game.data[9] ? 1 : 0;
                                 settings.double_tap_sprint = eeprom.game.data[10] ? 0 : 1;
+                                settings.extra_weapon_switch = eeprom.game.data[11] ? 1 : 0;
                             }
 
                             // Fall-through to load other settings.
@@ -821,6 +876,12 @@ int naomi_get_double_tap_sprint()
     return cur_settings->double_tap_sprint;
 }
 
+int naomi_get_extra_weapon_switch()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->extra_weapon_switch;
+}
+
 void naomi_save_settings()
 {
     eeprom_t eeprom;
@@ -837,6 +898,7 @@ void naomi_save_settings()
         eeprom.game.data[8] = settings.show_options;
         eeprom.game.data[9] = settings.hold_use_to_sprint;
         eeprom.game.data[10] = 1 - settings.double_tap_sprint;
+        eeprom.game.data[11] = settings.extra_weapon_switch;
 
         // Write it back!
         eeprom_write(&eeprom);
@@ -880,6 +942,12 @@ void naomi_set_double_tap_sprint(int val)
 {
     settings_loaded = 1;
     settings.double_tap_sprint = val;
+}
+
+void naomi_set_extra_weapon_switch(int val)
+{
+    settings_loaded = 1;
+    settings.extra_weapon_switch = val;
 }
 
 // Defined in d_main.c
@@ -1250,6 +1318,12 @@ int test()
                         }
                         case 4:
                         {
+                            // P2 punch/kick buttons to fast weapon switch.
+                            naomi_set_extra_weapon_switch(1 - naomi_get_extra_weapon_switch());
+                            break;
+                        }
+                        case 6:
+                        {
                             // Exit
                             screen = SCREEN_MAIN;
                             break;
@@ -1272,6 +1346,12 @@ int test()
                             naomi_set_hold_use_to_sprint(1 - naomi_get_hold_use_to_sprint());
                             break;
                         }
+                        case 4:
+                        {
+                            // P2 punch/kick buttons to fast weapon switch.
+                            naomi_set_extra_weapon_switch(1 - naomi_get_extra_weapon_switch());
+                            break;
+                        }
                     }
                 }
                 if (buttons.player1.right || buttons.player2.right)
@@ -1290,11 +1370,17 @@ int test()
                             naomi_set_hold_use_to_sprint(1 - naomi_get_hold_use_to_sprint());
                             break;
                         }
+                        case 4:
+                        {
+                            // P2 punch/kick buttons to fast weapon switch.
+                            naomi_set_extra_weapon_switch(1 - naomi_get_extra_weapon_switch());
+                            break;
+                        }
                     }
                 }
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
-                    if (controls_cursor < 4)
+                    if (controls_cursor < 6)
                     {
                         controls_cursor += 2;
                     }
@@ -1318,6 +1404,8 @@ int test()
                     "",
                     "Hold Use to Sprint: XXX",
                     "",
+                    "2P Buttons Fast Weapon Switch: XXX",
+                    "",
                     "Exit",
                 };
 
@@ -1326,11 +1414,13 @@ int test()
                 char *lineloc[] = {
                     lines[0] + 19,
                     lines[2] + 20,
+                    lines[4] + 31,
                 };
 
                 // Hack to insert current setting.
                 sprintf(lineloc[0], naomi_get_double_tap_sprint() ? "On" : "Off");
                 sprintf(lineloc[1], naomi_get_hold_use_to_sprint() ? "On" : "Off");
+                sprintf(lineloc[2], naomi_get_extra_weapon_switch() ? "On" : "Off");
 
                 // Draw it doom font style.
                 int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
