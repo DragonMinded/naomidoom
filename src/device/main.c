@@ -893,52 +893,49 @@ int test()
             {
                 if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
                 {
-                    if (main_cursor == 0)
+                    switch(main_cursor)
                     {
-                        // Settings menu.
-                        screen = SCREEN_SETTINGS;
-                        settings_cursor = 0;
-                    }
-                    else if(main_cursor == 2)
-                    {
-                        // Credits menu.
-                        screen = SCREEN_CREDITS;
-                    }
-                    else if (main_cursor == 4)
-                    {
-                        // Back to system test menu.
-                        naomi_save_settings();
-                        enter_test_mode();
+                        case 0:
+                        {
+                            // Settings menu.
+                            screen = SCREEN_SETTINGS;
+                            settings_cursor = 0;
+                            break;
+                        }
+                        case 2:
+                        {
+                            // Credits menu.
+                            screen = SCREEN_CREDITS;
+                            break;
+                        }
+                        case 4:
+                        {
+                            // Back to system test menu.
+                            naomi_save_settings();
+                            enter_test_mode();
+                            break;
+                        }
                     }
                 }
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
-                    if (main_cursor == 0)
+                    // Pop down to the next menu item if we're not at the bottom.
+                    if (main_cursor < 4)
                     {
-                        main_cursor = 2;
+                        main_cursor += 2;
                     }
-                    else if (main_cursor == 2)
+                    // Only wrap around if using svc to move.
+                    else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
                     {
-                        main_cursor = 4;
-                    }
-                    else if (main_cursor == 4)
-                    {
-                        // Only wrap around if using svc to move.
-                        if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
-                        {
-                            main_cursor = 0;
-                        }
+                        main_cursor = 0;
                     }
                 }
                 else if(buttons.player1.up || buttons.player2.up)
                 {
-                    if (main_cursor == 2)
+                    // Pop up to the previous menu item if we're not at the top.
+                    if (main_cursor > 0)
                     {
-                        main_cursor = 0;
-                    }
-                    else if (main_cursor == 4)
-                    {
-                        main_cursor = 2;
+                        main_cursor -= 2;
                     }
                 }
 
@@ -969,148 +966,143 @@ int test()
             {
                 if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
                 {
-                    if (settings_cursor == 0)
+                    switch(settings_cursor)
                     {
-                        // Message setting
-                        naomi_set_show_messages(1 - naomi_get_show_messages());
-                    }
-                    else if(settings_cursor == 2)
-                    {
-                        // SFX volume setting
-                        if (naomi_get_sfx_volume() == 15)
+                        case 0:
                         {
-                            naomi_set_sfx_volume(0);
+                            // Message setting
+                            naomi_set_show_messages(1 - naomi_get_show_messages());
+                            break;
                         }
-                        else
+                        case 2:
                         {
-                            naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                            // SFX volume setting
+                            if (naomi_get_sfx_volume() == 15)
+                            {
+                                naomi_set_sfx_volume(0);
+                            }
+                            else
+                            {
+                                naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                            }
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 4)
-                    {
-                        // Music volume setting
-                        if (naomi_get_music_volume() == 15)
+                        case 4:
                         {
-                            naomi_set_music_volume(0);
+                            // Music volume setting
+                            if (naomi_get_music_volume() == 15)
+                            {
+                                naomi_set_music_volume(0);
+                            }
+                            else
+                            {
+                                naomi_set_music_volume(naomi_get_music_volume() + 1);
+                            }
+                            break;
                         }
-                        else
+                        case 6:
                         {
-                            naomi_set_music_volume(naomi_get_music_volume() + 1);
+                            // Options in game setting
+                            naomi_set_show_options(1 - naomi_get_show_options());
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 6)
-                    {
-                        // Options in game setting
-                        naomi_set_show_options(1 - naomi_get_show_options());
-                    }
-                    else if (settings_cursor == 8)
-                    {
-                        // Exit
-                        screen = SCREEN_MAIN;
+                        case 8:
+                        {
+                            // Exit
+                            screen = SCREEN_MAIN;
+                            break;
+                        }
                     }
                 }
                 if (buttons.player1.left || buttons.player2.left)
                 {
-                    if (settings_cursor == 0)
+                    switch(settings_cursor)
                     {
-                        // Message setting
-                        naomi_set_show_messages(1 - naomi_get_show_messages());
-                    }
-                    else if(settings_cursor == 2)
-                    {
-                        // SFX volume setting
-                        if (naomi_get_sfx_volume() > 0)
+                        case 0:
                         {
-                            naomi_set_sfx_volume(naomi_get_sfx_volume() - 1);
+                            // Message setting
+                            naomi_set_show_messages(1 - naomi_get_show_messages());
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 4)
-                    {
-                        // Music volume setting
-                        if (naomi_get_music_volume() > 0)
+                        case 2:
                         {
-                            naomi_set_music_volume(naomi_get_music_volume() - 1);
+                            // SFX volume setting
+                            if (naomi_get_sfx_volume() > 0)
+                            {
+                                naomi_set_sfx_volume(naomi_get_sfx_volume() - 1);
+                            }
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 6)
-                    {
-                        // Options in game setting
-                        naomi_set_show_options(1 - naomi_get_show_options());
+                        case 4:
+                        {
+                            // Music volume setting
+                            if (naomi_get_music_volume() > 0)
+                            {
+                                naomi_set_music_volume(naomi_get_music_volume() - 1);
+                            }
+                            break;
+                        }
+                        case 6:
+                        {
+                            // Options in game setting
+                            naomi_set_show_options(1 - naomi_get_show_options());
+                            break;
+                        }
                     }
                 }
                 if (buttons.player1.right || buttons.player2.right)
                 {
-                    if (settings_cursor == 0)
+                    switch(settings_cursor)
                     {
-                        // Message setting
-                        naomi_set_show_messages(1 - naomi_get_show_messages());
-                    }
-                    else if(settings_cursor == 2)
-                    {
-                        // SFX volume setting
-                        if (naomi_get_sfx_volume() < 15)
+                        case 0:
                         {
-                            naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                            // Message setting
+                            naomi_set_show_messages(1 - naomi_get_show_messages());
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 4)
-                    {
-                        // Music volume setting
-                        if (naomi_get_music_volume() < 15)
+                        case 2:
                         {
-                            naomi_set_music_volume(naomi_get_music_volume() + 1);
+                            // SFX volume setting
+                            if (naomi_get_sfx_volume() < 15)
+                            {
+                                naomi_set_sfx_volume(naomi_get_sfx_volume() + 1);
+                            }
+                            break;
                         }
-                    }
-                    else if (settings_cursor == 6)
-                    {
-                        // Options in game setting
-                        naomi_set_show_options(1 - naomi_get_show_options());
+                        case 4:
+                        {
+                            // Music volume setting
+                            if (naomi_get_music_volume() < 15)
+                            {
+                                naomi_set_music_volume(naomi_get_music_volume() + 1);
+                            }
+                            break;
+                        }
+                        case 6:
+                        {
+                            // Options in game setting
+                            naomi_set_show_options(1 - naomi_get_show_options());
+                            break;
+                        }
                     }
                 }
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
-                    if (settings_cursor == 0)
+                    if (settings_cursor < 8)
                     {
-                        settings_cursor = 2;
+                        settings_cursor += 2;
                     }
-                    else if (settings_cursor == 2)
+                    // Only wrap around if using svc to move.
+                    else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
                     {
-                        settings_cursor = 4;
-                    }
-                    else if (settings_cursor == 4)
-                    {
-                        settings_cursor = 6;
-                    }
-                    else if (settings_cursor == 6)
-                    {
-                        settings_cursor = 8;
-                    }
-                    else if (settings_cursor == 8)
-                    {
-                        // Only wrap around if using svc to move.
-                        if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
-                        {
-                            settings_cursor = 0;
-                        }
+                        settings_cursor = 0;
                     }
                 }
                 else if(buttons.player1.up || buttons.player2.up)
                 {
-                    if (settings_cursor == 2)
+                    if (settings_cursor > 0)
                     {
-                        settings_cursor = 0;
-                    }
-                    else if (settings_cursor == 4)
-                    {
-                        settings_cursor = 2;
-                    }
-                    else if (settings_cursor == 6)
-                    {
-                        settings_cursor = 4;
-                    }
-                    else if (settings_cursor == 8)
-                    {
-                        settings_cursor = 6;
+                        settings_cursor -= 2;
                     }
                 }
 
