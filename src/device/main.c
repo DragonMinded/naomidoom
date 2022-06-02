@@ -245,6 +245,12 @@ weapontype_t _position_to_weapon(int pos)
 int naomi_get_double_tap_sprint();
 int naomi_get_hold_use_to_sprint();
 int naomi_get_extra_weapon_switch();
+int naomi_get_fire_button();
+int naomi_get_use_button();
+int naomi_get_strafe_button();
+int naomi_get_previous_weapon_button();
+int naomi_get_next_weapon_button();
+int naomi_get_automap_button();
 
 void I_StartTic (void)
 {
@@ -273,6 +279,28 @@ void I_StartTic (void)
 
         jvs_buttons_t pressed = maple_buttons_pressed();
         jvs_buttons_t released = maple_buttons_released();
+
+        // Create a map of 1P 1-6 presses and releases as an indexed
+        // array so we can look up mapped buttons. Button position "0"
+        // is so that we can support unmapped buttons.
+        int bdown[7] = {
+            0,
+            pressed.player1.button1,
+            pressed.player1.button2,
+            pressed.player1.button3,
+            pressed.player1.button4,
+            pressed.player1.button5,
+            pressed.player1.button6,
+        };
+        int bup[7] = {
+            0,
+            released.player1.button1,
+            released.player1.button2,
+            released.player1.button3,
+            released.player1.button4,
+            released.player1.button5,
+            released.player1.button6,
+        };
 
         if (pressed.psw1 || pressed.test)
         {
@@ -545,18 +573,18 @@ void I_StartTic (void)
             I_SendInput(ev_keyup, KEY_DOWNARROW);
         }
 
-        // Fire, mapped to 1P button 1.
-        if (pressed.player1.button1)
+        // Fire, mapped to 1P button 1 by default.
+        if (bdown[naomi_get_fire_button()])
         {
             I_SendInput(ev_keydown, KEY_RCTRL);
         }
-        if (released.player1.button1)
+        if (bup[naomi_get_fire_button()])
         {
             I_SendInput(ev_keyup, KEY_RCTRL);
         }
 
-        // Use, mapped to 1P button 2.
-        if (pressed.player1.button2)
+        // Use, mapped to 1P button 2 by default.
+        if (bdown[naomi_get_use_button()])
         {
             I_SendInput(ev_keydown, ' ');
             if (naomi_get_hold_use_to_sprint())
@@ -564,7 +592,7 @@ void I_StartTic (void)
                 I_SendInput(ev_keydown, KEY_RSHIFT);
             }
         }
-        if (released.player1.button2)
+        if (bup[naomi_get_use_button()])
         {
             I_SendInput(ev_keyup, ' ');
             if (naomi_get_hold_use_to_sprint())
@@ -573,12 +601,12 @@ void I_StartTic (void)
             }
         }
 
-        // Strafe modifier, mapped to 1P button 3.
-        if (pressed.player1.button3)
+        // Strafe modifier, mapped to 1P button 3 by default.
+        if (bdown[naomi_get_strafe_button()])
         {
             I_SendInput(ev_keydown, KEY_RALT);
         }
-        if (released.player1.button3)
+        if (bup[naomi_get_strafe_button()])
         {
             I_SendInput(ev_keyup, KEY_RALT);
         }
@@ -586,15 +614,15 @@ void I_StartTic (void)
         // For weapon switching, since Doom doesn't seem to have next/previous
         // weapon buttons, we must do it ourselves!
         player_t *player = NULL;
-        weapontype_t curWeapon;
+        weapontype_t curWeapon = wp_fist;
         if (consoleplayer >= 0 && consoleplayer < MAXPLAYERS)
         {
             player = &players[consoleplayer];
             curWeapon = player->pendingweapon == wp_nochange ? player->readyweapon : player->pendingweapon;
         }
 
-        // Previous weapon, mapped to 1P button 4.
-        if (pressed.player1.button4)
+        // Previous weapon, mapped to 1P button 4 by default.
+        if (bdown[naomi_get_previous_weapon_button()])
         {
             // Gotta figure out what weapon to try to swap to.
             if (player != NULL)
@@ -618,8 +646,8 @@ void I_StartTic (void)
             }
         }
 
-        // Next weapon, mapped to 1P button 5.
-        if (pressed.player1.button5)
+        // Next weapon, mapped to 1P button 5 by default.
+        if (bdown[naomi_get_next_weapon_button()])
         {
             // Gotta figure out what weapon to try to swap to.
             if (player != NULL)
@@ -643,13 +671,13 @@ void I_StartTic (void)
             }
         }
 
-        // Automap modifier, mapped to 1P button 6.
-        if (pressed.player1.button6)
+        // Automap modifier, mapped to 1P button 6 by default.
+        if (bdown[naomi_get_automap_button()])
         {
             I_SendInput(ev_keydown, KEY_TAB);
             I_SendDelayedInput(ev_keyup, KEY_TAB);
         }
-        if (released.player1.button6)
+        if (bup[naomi_get_automap_button()])
         {
             I_SendInput(ev_keydown, KEY_TAB);
             I_SendDelayedInput(ev_keyup, KEY_TAB);
@@ -739,19 +767,31 @@ int access(const char *path, int axx)
 
 typedef struct
 {
+    // General on/off options.
     int silent_attract;
     int show_messages;
     int show_options;
     int hold_use_to_sprint;
     int double_tap_sprint;
     int extra_weapon_switch;
+
+    // Game volumes for sounds.
     int sfx_volume;
     int music_volume;
+
+    // Control remapping support.
+    int fire_button;
+    int use_button;
+    int strafe_button;
+    int previous_weapon_button;
+    int next_weapon_button;
+    int automap_button;
 } doom_settings_t;
 
-#define DOOM_EEPROM_VER 2
+#define DOOM_EEPROM_VER 3
 #define DOOM_EEPROM_VER1_SIZE 8
 #define DOOM_EEPROM_VER2_SIZE 12
+#define DOOM_EEPROM_VER3_SIZE 18
 
 static int settings_loaded = 0;
 static doom_settings_t settings;
@@ -771,6 +811,12 @@ doom_settings_t *_naomi_load_settings()
         settings.hold_use_to_sprint = 0;
         settings.double_tap_sprint = 1;
         settings.extra_weapon_switch = 0;
+        settings.fire_button = 1;
+        settings.use_button = 2;
+        settings.strafe_button = 3;
+        settings.previous_weapon_button = 4;
+        settings.next_weapon_button = 5;
+        settings.automap_button = 6;
 
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
@@ -786,6 +832,38 @@ doom_settings_t *_naomi_load_settings()
                     // Cool, let's figure out what version of data this is.
                     switch(eeprom.game.data[4])
                     {
+                        case 3:
+                        {
+                            if (eeprom.game.size >= DOOM_EEPROM_VER3_SIZE)
+                            {
+                                if (eeprom.game.data[12] >= 0 && eeprom.game.data[12] <= 6)
+                                {
+                                    settings.fire_button = eeprom.game.data[12];
+                                }
+                                if (eeprom.game.data[13] >= 0 && eeprom.game.data[13] <= 6)
+                                {
+                                    settings.use_button = eeprom.game.data[13];
+                                }
+                                if (eeprom.game.data[14] >= 0 && eeprom.game.data[14] <= 6)
+                                {
+                                    settings.strafe_button = eeprom.game.data[14];
+                                }
+                                if (eeprom.game.data[15] >= 0 && eeprom.game.data[15] <= 6)
+                                {
+                                    settings.previous_weapon_button = eeprom.game.data[15];
+                                }
+                                if (eeprom.game.data[16] >= 0 && eeprom.game.data[16] <= 6)
+                                {
+                                    settings.next_weapon_button = eeprom.game.data[16];
+                                }
+                                if (eeprom.game.data[17] >= 0 && eeprom.game.data[17] <= 6)
+                                {
+                                    settings.automap_button = eeprom.game.data[17];
+                                }
+                            }
+
+                            // Fall-through to load other settings.
+                        }
                         case 2:
                         {
                             if (eeprom.game.size >= DOOM_EEPROM_VER2_SIZE)
@@ -882,13 +960,49 @@ int naomi_get_extra_weapon_switch()
     return cur_settings->extra_weapon_switch;
 }
 
+int naomi_get_fire_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->fire_button;
+}
+
+int naomi_get_use_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->use_button;
+}
+
+int naomi_get_strafe_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->strafe_button;
+}
+
+int naomi_get_previous_weapon_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->previous_weapon_button;
+}
+
+int naomi_get_next_weapon_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->next_weapon_button;
+}
+
+int naomi_get_automap_button()
+{
+    doom_settings_t *cur_settings = _naomi_load_settings();
+    return cur_settings->automap_button;
+}
+
 void naomi_save_settings()
 {
     eeprom_t eeprom;
     if (eeprom_read(&eeprom) == 0)
     {
         // Format the game settings.
-        eeprom.game.size = DOOM_EEPROM_VER2_SIZE;
+        eeprom.game.size = DOOM_EEPROM_VER3_SIZE;
         memset(eeprom.game.data, 0, eeprom.game.size);
         memcpy(eeprom.game.data, "DOOM", 4);
         eeprom.game.data[4] = DOOM_EEPROM_VER;
@@ -899,6 +1013,12 @@ void naomi_save_settings()
         eeprom.game.data[9] = settings.hold_use_to_sprint;
         eeprom.game.data[10] = 1 - settings.double_tap_sprint;
         eeprom.game.data[11] = settings.extra_weapon_switch;
+        eeprom.game.data[12] = settings.fire_button;
+        eeprom.game.data[13] = settings.use_button;
+        eeprom.game.data[14] = settings.strafe_button;
+        eeprom.game.data[15] = settings.previous_weapon_button;
+        eeprom.game.data[16] = settings.next_weapon_button;
+        eeprom.game.data[17] = settings.automap_button;
 
         // Write it back!
         eeprom_write(&eeprom);
@@ -948,6 +1068,42 @@ void naomi_set_extra_weapon_switch(int val)
 {
     settings_loaded = 1;
     settings.extra_weapon_switch = val;
+}
+
+void naomi_set_fire_button(int val)
+{
+    settings_loaded = 1;
+    settings.fire_button = val;
+}
+
+void naomi_set_use_button(int val)
+{
+    settings_loaded = 1;
+    settings.use_button = val;
+}
+
+void naomi_set_strafe_button(int val)
+{
+    settings_loaded = 1;
+    settings.strafe_button = val;
+}
+
+void naomi_set_previous_weapon_button(int val)
+{
+    settings_loaded = 1;
+    settings.previous_weapon_button = val;
+}
+
+void naomi_set_next_weapon_button(int val)
+{
+    settings_loaded = 1;
+    settings.next_weapon_button = val;
+}
+
+void naomi_set_automap_button(int val)
+{
+    settings_loaded = 1;
+    settings.automap_button = val;
 }
 
 // Defined in d_main.c
@@ -1022,6 +1178,7 @@ int test()
     int main_cursor = 0;
     int settings_cursor = 0;
     int controls_cursor = 0;
+    int editing_controls = 0;
     while ( 1 )
     {
         // First, poll the buttons and act accordingly.
@@ -1279,10 +1436,10 @@ int test()
                 };
 
                 // Hack to insert current setting.
-                sprintf(lineloc[0], naomi_get_show_messages() ? "On" : "Off");
+                strcpy(lineloc[0], naomi_get_show_messages() ? "On" : "Off");
                 sprintf(lineloc[1], "%d/15", naomi_get_sfx_volume());
                 sprintf(lineloc[2], "%d/15", naomi_get_music_volume());
-                sprintf(lineloc[3], naomi_get_show_options() ? "Shown" : "Hidden");
+                strcpy(lineloc[3], naomi_get_show_options() ? "Shown" : "Hidden");
 
                 // Draw it doom font style.
                 int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
@@ -1323,6 +1480,17 @@ int test()
                             break;
                         }
                         case 6:
+                        case 8:
+                        case 10:
+                        case 12:
+                        case 14:
+                        case 16:
+                        {
+                            // Toggle editing controls.
+                            editing_controls = 1 - editing_controls;
+                            break;
+                        }
+                        case 18:
                         {
                             // Exit
                             screen = SCREEN_MAIN;
@@ -1380,21 +1548,96 @@ int test()
                 }
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
-                    if (controls_cursor < 6)
+                    if (!editing_controls)
                     {
-                        controls_cursor += 2;
-                    }
-                    // Only wrap around if using svc to move.
-                    else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
-                    {
-                        controls_cursor = 0;
+                        if (controls_cursor < 18)
+                        {
+                            controls_cursor += 2;
+                        }
+                        // Only wrap around if using svc to move.
+                        else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
+                        {
+                            controls_cursor = 0;
+                        }
                     }
                 }
                 else if(buttons.player1.up || buttons.player2.up)
                 {
-                    if (controls_cursor > 0)
+                    if (!editing_controls)
                     {
-                        controls_cursor -= 2;
+                        if (controls_cursor > 0)
+                        {
+                            controls_cursor -= 2;
+                        }
+                    }
+                }
+                else if (buttons.player1.button1 || buttons.player1.button2 || buttons.player1.button3 || buttons.player1.button4 || buttons.player1.button5 || buttons.player1.button6)
+                {
+                    if (editing_controls)
+                    {
+                        // Figure out what button we care about.
+                        int which = (
+                            buttons.player1.button1 ?
+                                1 :
+                                (
+                                    buttons.player1.button2 ? 2 :
+                                    (
+                                        buttons.player1.button3 ? 3 :
+                                        (
+                                            buttons.player1.button4 ? 4 :
+                                            (
+                                                buttons.player1.button5 ? 5 : 6
+                                            )
+                                        )
+                                    )
+                                )
+                            );
+
+                        // Unset every control bound to this button.
+                        if (naomi_get_fire_button() == which) { naomi_set_fire_button(0); }
+                        if (naomi_get_use_button() == which) { naomi_set_use_button(0); }
+                        if (naomi_get_strafe_button() == which) { naomi_set_strafe_button(0); }
+                        if (naomi_get_previous_weapon_button() == which) { naomi_set_previous_weapon_button(0); }
+                        if (naomi_get_next_weapon_button() == which) { naomi_set_next_weapon_button(0); }
+                        if (naomi_get_automap_button() == which) { naomi_set_automap_button(0); }
+
+                        // Now, given the correct cursor, set the control.
+                        switch(controls_cursor)
+                        {
+                            case 6:
+                            {
+                                naomi_set_fire_button(which);
+                                break;
+                            }
+                            case 8:
+                            {
+                                naomi_set_use_button(which);
+                                break;
+                            }
+                            case 10:
+                            {
+                                naomi_set_strafe_button(which);
+                                break;
+                            }
+                            case 12:
+                            {
+                                naomi_set_previous_weapon_button(which);
+                                break;
+                            }
+                            case 14:
+                            {
+                                naomi_set_next_weapon_button(which);
+                                break;
+                            }
+                            case 16:
+                            {
+                                naomi_set_automap_button(which);
+                                break;
+                            }
+                        }
+
+                        // Commit the control now that we're done.
+                        editing_controls = 0;
                     }
                 }
 
@@ -1406,6 +1649,18 @@ int test()
                     "",
                     "2P Buttons Fast Weapon Switch: XXX",
                     "",
+                    "Fire Button: XX",
+                    "",
+                    "Use Button: XX",
+                    "",
+                    "Strafe Button: XX",
+                    "",
+                    "Previous Weapon Button: XX",
+                    "",
+                    "Next Weapon Button: XX",
+                    "",
+                    "Automap Button: XX",
+                    "",
                     "Exit",
                 };
 
@@ -1415,24 +1670,43 @@ int test()
                     lines[0] + 19,
                     lines[2] + 20,
                     lines[4] + 31,
+                    lines[6] + 13,
+                    lines[8] + 12,
+                    lines[10] + 15,
+                    lines[12] + 24,
+                    lines[14] + 20,
+                    lines[16] + 16,
                 };
 
                 // Hack to insert current setting.
-                sprintf(lineloc[0], naomi_get_double_tap_sprint() ? "On" : "Off");
-                sprintf(lineloc[1], naomi_get_hold_use_to_sprint() ? "On" : "Off");
-                sprintf(lineloc[2], naomi_get_extra_weapon_switch() ? "On" : "Off");
+                strcpy(lineloc[0], naomi_get_double_tap_sprint() ? "On" : "Off");
+                strcpy(lineloc[1], naomi_get_hold_use_to_sprint() ? "On" : "Off");
+                strcpy(lineloc[2], naomi_get_extra_weapon_switch() ? "On" : "Off");
+                naomi_get_fire_button() == 0 ? sprintf(lineloc[3], "--") : sprintf(lineloc[3], "B%d", naomi_get_fire_button());
+                naomi_get_use_button() == 0 ? sprintf(lineloc[4], "--") : sprintf(lineloc[4], "B%d", naomi_get_use_button());
+                naomi_get_strafe_button() == 0 ? sprintf(lineloc[5], "--") : sprintf(lineloc[5], "B%d", naomi_get_strafe_button());
+                naomi_get_previous_weapon_button() == 0 ? sprintf(lineloc[6], "--") : sprintf(lineloc[6], "B%d", naomi_get_previous_weapon_button());
+                naomi_get_next_weapon_button() == 0 ? sprintf(lineloc[7], "--") : sprintf(lineloc[7], "B%d", naomi_get_next_weapon_button());
+                naomi_get_automap_button() == 0 ? sprintf(lineloc[8], "--") : sprintf(lineloc[8], "B%d", naomi_get_automap_button());
 
                 // Draw it doom font style.
                 int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
                 for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
                 {
-                    V_DrawText(100, top + (i * 20), lines[i]);
-
-                    // Also draw the skull to show menu.
+                    // Draw the skull to show menu cursor.
                     if (i == controls_cursor)
                     {
+                        // Extremely crude hack to show a "blinking" button assignment when waiting for new input.
+                        if (editing_controls && ((count % 30) < 15))
+                        {
+                            *lineloc[i / 2] = 0;
+                        }
+
                         V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
                     }
+
+                    // Draw actual menu text.
+                    V_DrawText(100, top + (i * 20), lines[i]);
                 }
                 break;
             }
