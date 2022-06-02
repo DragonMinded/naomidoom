@@ -1186,6 +1186,7 @@ void D_DoomMain (void)
 	printf ("External statistics registered.\n");
     }
     
+#ifndef NAOMI
     // start the apropriate game based on parms
     p = M_CheckParm ("-record");
 
@@ -1209,6 +1210,7 @@ void D_DoomMain (void)
 	G_TimeDemo (myargv[p+1]);
 	D_DoomLoop ();  // never returns
     }
+#endif
 	
     p = M_CheckParm ("-loadgame");
     if (p && p < myargc-1)

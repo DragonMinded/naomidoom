@@ -1607,11 +1607,13 @@ boolean M_Responder (event_t* ev)
 	return true;
     }
 	
+#ifndef NAOMI
     if (devparm && ch == KEY_F1)
     {
 	G_ScreenShot ();
 	return true;
     }
+#endif
 		
     
     // F-Keys
