@@ -796,27 +796,33 @@ typedef struct
 static int settings_loaded = 0;
 static doom_settings_t settings;
 
+void naomi_load_default_settings()
+{
+    settings.silent_attract = 0;
+    settings.music_volume = 8;
+    settings.sfx_volume = 8;
+    settings.show_messages = 1;
+    settings.show_options = 1;
+    settings.hold_use_to_sprint = 0;
+    settings.double_tap_sprint = 1;
+    settings.extra_weapon_switch = 0;
+    settings.fire_button = 1;
+    settings.use_button = 2;
+    settings.strafe_button = 3;
+    settings.previous_weapon_button = 4;
+    settings.next_weapon_button = 5;
+    settings.automap_button = 6;
+}
+
 doom_settings_t *_naomi_load_settings()
 {
     // I'm not worried about race conditions here since I intend this only to
     // be used from the main Doom thread.
     if (settings_loaded == 0)
     {
-        // Default settings.
-        settings.silent_attract = 0;
-        settings.music_volume = 8;
-        settings.sfx_volume = 8;
-        settings.show_messages = 1;
-        settings.show_options = 1;
-        settings.hold_use_to_sprint = 0;
-        settings.double_tap_sprint = 1;
-        settings.extra_weapon_switch = 0;
-        settings.fire_button = 1;
-        settings.use_button = 2;
-        settings.strafe_button = 3;
-        settings.previous_weapon_button = 4;
-        settings.next_weapon_button = 5;
-        settings.automap_button = 6;
+        // First, load defaults in case we can't get the EEPROM or its an old version
+        // that doesn't contain all settings.
+        naomi_load_default_settings();
 
         eeprom_t eeprom;
         if (eeprom_read(&eeprom) == 0)
@@ -1124,6 +1130,7 @@ extern char skullName[2][9];
 #define SCREEN_SETTINGS 1
 #define SCREEN_CREDITS 2
 #define SCREEN_CONTROLS 3
+#define SCREEN_DEFAULTS 4
 
 int test()
 {
@@ -1179,6 +1186,7 @@ int test()
     int settings_cursor = 0;
     int controls_cursor = 0;
     int editing_controls = 0;
+    int defaults_cursor = 0;
     while ( 1 )
     {
         // First, poll the buttons and act accordingly.
@@ -1209,11 +1217,18 @@ int test()
                         }
                         case 4:
                         {
+                            // Defaults menu.
+                            screen = SCREEN_DEFAULTS;
+                            defaults_cursor = 0;
+                            break;
+                        }
+                        case 6:
+                        {
                             // Credits menu.
                             screen = SCREEN_CREDITS;
                             break;
                         }
-                        case 6:
+                        case 8:
                         {
                             // Back to system test menu.
                             naomi_save_settings();
@@ -1225,7 +1240,7 @@ int test()
                 else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.down || buttons.player2.down)
                 {
                     // Pop down to the next menu item if we're not at the bottom.
-                    if (main_cursor < 6)
+                    if (main_cursor < 8)
                     {
                         main_cursor += 2;
                     }
@@ -1249,6 +1264,8 @@ int test()
                     "Settings",
                     "",
                     "Controls",
+                    "",
+                    "Reset Defaults",
                     "",
                     "Credits",
                     "",
@@ -1707,6 +1724,76 @@ int test()
 
                     // Draw actual menu text.
                     V_DrawText(100, top + (i * 20), lines[i]);
+                }
+                break;
+            }
+            case SCREEN_DEFAULTS:
+            {
+                if (buttons.psw1 || buttons.test || buttons.player1.start || buttons.player2.start)
+                {
+                    switch(defaults_cursor)
+                    {
+                        case 0:
+                        {
+                            // Cancel, no resetting.
+                            screen = SCREEN_MAIN;
+                            break;
+                        }
+                        case 1:
+                        {
+                            // Reset controls.
+                            naomi_load_default_settings();
+                            screen = SCREEN_MAIN;
+                            break;
+                        }
+                    }
+                }
+                else if(buttons.psw2 || buttons.player1.service || buttons.player2.service || buttons.player1.right || buttons.player2.right)
+                {
+                    // Pop down to the next menu item if we're not at the bottom.
+                    if (defaults_cursor < 1)
+                    {
+                        defaults_cursor ++;
+                    }
+                    // Only wrap around if using svc to move.
+                    else if (buttons.psw2 || buttons.player1.service || buttons.player2.service)
+                    {
+                        defaults_cursor = 0;
+                    }
+                }
+                else if(buttons.player1.left || buttons.player2.left)
+                {
+                    // Pop up to the previous menu item if we're not at the top.
+                    if (defaults_cursor > 0)
+                    {
+                        defaults_cursor --;
+                    }
+                }
+
+                // Display warning prompt for resetting.
+                char *lines[] = {
+                    "Reset all settings to defaults?",
+                    "",
+                    "This will return all control",
+                    "mappings, system and game",
+                    "settings to their default",
+                    "values. It will also delete",
+                    "any saved games!",
+                    "",
+                    "Are you sure?      No      Yes",
+                };
+
+                // Draw it doom font style.
+                int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
+                for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
+                {
+                    V_DrawText(100, top + (i * 20), lines[i]);
+
+                    // Also draw the skull on no/yes selection.
+                    if (i == 8)
+                    {
+                        V_DrawChar(70 + (10 * ((defaults_cursor * 8) + 24)), top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
+                    }
                 }
                 break;
             }
