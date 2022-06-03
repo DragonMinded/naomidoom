@@ -25,6 +25,7 @@
 #include "../z_zone.h"
 #include "../w_wad.h"
 #include "../hu_stuff.h"
+#include "../dstrings.h"
 
 int controls_available = 0;
 int controls_needed = 0;
@@ -771,6 +772,16 @@ int access(const char *path, int axx)
 
     // Empty
     return EACCES;
+}
+
+void naomi_wipe_game_saves()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        char name[256];
+        sprintf(name, SAVEGAMENAME"%d.dsg", i);
+        remove(name);
+    }
 }
 
 typedef struct
@@ -1758,6 +1769,7 @@ int test()
                         {
                             // Reset controls.
                             naomi_load_default_settings();
+                            naomi_wipe_game_saves();
                             screen = SCREEN_MAIN;
                             break;
                         }
