@@ -1838,7 +1838,7 @@ int test()
                     "Ported by DragonMinded",
                     "",
                     "Build date: xxxx-xx-xx",
-                    "Release version: 1.0",
+                    "Release version: 1.01",
                     "",
                     "Exit",
                 };
