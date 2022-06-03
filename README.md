@@ -6,10 +6,22 @@ first set up the libnaomi toolchain from https://github.com/DragonMinded/libnaom
 to add a WAD file to the `romfs/` directory. I recommend buying Doom Ultimate from GoG and taking DOOM.WAD
 from the installed files.
 
+All features of the original Doom should be present including game loading/saving, options menus, directional
+sound, WAD auto-discovery and other expected features. Note that the Naomi only has 32KB of battery-backed
+SRAM to work with, so only a small number of game saves will fit. There is a fully-featured game settings
+menu in the Naomi Test Mode including control remapping, various options and the ability to reset defaults
+and wipe game saves.
+
+Note that this is neither designed for, nor will ever be coded to take coin drops. This is a hobby port and
+I don't want people making money running this in public based on my hard work. Somebody else may do the work
+to make this happen, but I certainly won't be that person!
+
 ## Releases
 
 A precompiled release with the Doom 1 Shareware WAD is available under the `shareware/` directory. Load
-it with Demul or net boot it on your Naomi cabinet to play it!
+it with Demul or net boot it on your Naomi cabinet to play it! As I don't have the rights to distribute
+commercial versions of Doom, there is no compiled version of Doom Ultimate or other versions. If you have
+the WADs, compile it yourself!
 
 ## Working WAD Files
 
@@ -35,10 +47,15 @@ Note that all six buttons are remappable in the game test menu if you wish to re
 also find settings there to disable double-tap sprinting, enable holding the use key down to enable sprinting
 and using 2P buttons 1-6 to fast-switch weapons.
 
-## Current Issues
+## Known Issues
 
-* Load/Save game are completely untested.
+Sometimes saving a game will fail, due to the SRAM being completely out of space. Try saving over another
+slot to reuse that slot's space. Given the way Doom was coded, there needs to be a back button (which is mapped
+to 2P start) in order to back out of menus and cancel certain operations. Doom will not work very well on a
+1P-only panel as a result. It will also not work very well on 3 button panels since it needs to many controls
+to be playable.
 
 ## Acknowledgements
 
 Check out the original port here: https://github.com/stoffera/fbdoom
+Thanks to https://twitter.com/_GeekMan_ for alpha testing and sound issue bug reports
