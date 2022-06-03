@@ -59,6 +59,10 @@ rcsid[] = "$Id: m_misc.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 
 #include "m_misc.h"
 
+#ifdef NAOMI
+#include <zlib.h>
+#endif
+
 //
 // M_DrawText
 // Returns the final X coordinate
@@ -118,11 +122,82 @@ M_WriteFile
     int		handle;
     int		count;
 	
+#ifdef NAOMI
+    // We have VERY limited space, so it might be possible that even truncating
+    // the file fails to save (since the filesystem is copy on write). If we fail
+    // to save we remove the file anyway, so remove it first to signal to the filesystem
+    // that we are okay losing the file.
+    remove (name);
+#endif
+
     handle = open ( name, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
 
     if (handle == -1)
 	return false;
 
+#ifdef NAOMI
+    // zlib compress data before writing.
+    int decompressed_length = length;
+    count = write(handle, &decompressed_length, 4);
+    if (count != 4)
+    {
+        close (handle);
+        remove (name);
+        return false;
+    }
+
+    // Assume deflate will use at most length bytes.
+    void *deflated = malloc(length);
+
+    if (!deflated)
+    {
+        close(handle);
+        remove (name);
+        return false;
+    }
+
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.avail_in = length;
+    strm.next_in = source;
+    strm.avail_out = length;
+    strm.next_out = deflated;
+    int ret = deflateInit(&strm, 9);
+    if (ret != Z_OK)
+    {
+        free(deflated);
+        close(handle);
+        remove (name);
+        return false;
+    }
+
+    ret = deflate(&strm, Z_FINISH);
+
+    if (ret != Z_STREAM_END)
+    {
+        deflateEnd(&strm);
+        free(deflated);
+        close(handle);
+        remove (name);
+        return false;
+    }
+
+    int size = length - strm.avail_out;
+    count = write(handle, deflated, size);
+
+    deflateEnd(&strm);
+    free(deflated);
+    close(handle);
+    if (size != count)
+    {
+        remove (name);
+        return false;
+    }
+
+    return true;
+#else
     count = write (handle, source, length);
     close (handle);
 	
@@ -130,6 +205,7 @@ M_WriteFile
 	return false;
 		
     return true;
+#endif
 }
 
 
@@ -150,6 +226,58 @@ M_ReadFile
 	I_Error ("Couldn't read file %s", name);
     if (fstat (handle,&fileinfo) == -1)
 	I_Error ("Couldn't read file %s", name);
+#ifdef NAOMI
+    length = fileinfo.st_size;
+
+    if (length <= 4)
+    {
+        I_Error ("Couldn't read file %s", name);
+    }
+
+    int decompressed_length = 0;
+    count = read(handle, &decompressed_length, 4);
+    if (count != 4)
+    {
+	    I_Error ("Couldn't read file %s compressed length", name);
+    }
+
+    length -= 4;
+    void *compressed = malloc(length);
+    count = read(handle, compressed, length);
+    if (count != length)
+    {
+	    I_Error ("Couldn't read file %s compressed data", name);
+    }
+
+    buf = Z_Malloc (decompressed_length, PU_STATIC, NULL);
+
+    // Decompress the data.
+    int ret;
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.avail_in = length;
+    strm.next_in = compressed;
+    strm.avail_out = decompressed_length;
+    strm.next_out = buf;
+    ret = inflateInit(&strm);
+    if (ret != Z_OK)
+    {
+	    I_Error ("Couldn't decompress file %s contents", name);
+    }
+
+    ret = inflate(&strm, Z_NO_FLUSH);
+    (void)inflateEnd(&strm);
+    if (ret != Z_STREAM_END)
+    {
+	    I_Error ("Couldn't decompress file %s contents", name);
+    }
+
+    // No longer need this around now that we decompressed the data
+    free(compressed);
+    length = decompressed_length;
+#else
     length = fileinfo.st_size;
     buf = Z_Malloc (length, PU_STATIC, NULL);
     count = read (handle, buf, length);
@@ -158,6 +286,7 @@ M_ReadFile
     if (count < length)
 	I_Error ("Couldn't read file %s", name);
 		
+#endif
     *buffer = buf;
     return length;
 }

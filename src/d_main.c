@@ -1210,7 +1210,6 @@ void D_DoomMain (void)
 	G_TimeDemo (myargv[p+1]);
 	D_DoomLoop ();  // never returns
     }
-#endif
 	
     p = M_CheckParm ("-loadgame");
     if (p && p < myargc-1)
@@ -1221,6 +1220,7 @@ void D_DoomMain (void)
 	    sprintf(file, SAVEGAMENAME"%c.dsg",myargv[p+1][0]);
 	G_LoadGame (file);
     }
+#endif
 
 
     if ( gameaction != ga_loadgame )

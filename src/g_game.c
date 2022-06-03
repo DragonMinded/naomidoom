@@ -1278,9 +1278,11 @@ void G_DoSaveGame (void)
     int		length; 
     int		i; 
 	
+#ifndef NAOMI
     if (M_CheckParm("-cdrom"))
 	sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",savegameslot);
     else
+#endif
 	sprintf (name,SAVEGAMENAME"%d.dsg",savegameslot); 
     description = savedescription; 
 	 
@@ -1312,11 +1314,15 @@ void G_DoSaveGame (void)
     length = save_p - savebuffer; 
     if (length > SAVEGAMESIZE) 
 	I_Error ("Savegame buffer overrun"); 
-    M_WriteFile (name, savebuffer, length); 
+    char *message = GGSAVED;
+    if (M_WriteFile (name, savebuffer, length) == false)
+    {
+        message = GGSAVEFAILED;
+    }
     gameaction = ga_nothing; 
     savedescription[0] = 0;		 
 	 
-    players[consoleplayer].message = GGSAVED; 
+    players[consoleplayer].message = message;
 
     // draw the pattern into the back screen
     R_FillBackScreen ();	

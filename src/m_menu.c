@@ -544,9 +544,11 @@ void M_ReadSaveStrings(void)
 	
     for (i = 0;i < load_end;i++)
     {
+#ifndef NAOMI
 	if (M_CheckParm("-cdrom"))
 	    sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",i);
 	else
+#endif
 	    sprintf(name,SAVEGAMENAME"%d.dsg",i);
 
 	handle = open (name, O_RDONLY | 0, 0666);
@@ -556,7 +558,12 @@ void M_ReadSaveStrings(void)
 	    LoadMenu[i].status = 0;
 	    continue;
 	}
+#ifdef NAOMI
+    // Just name it based on the slot.
+    sprintf(savegamestrings[i], "SAVE %d", i + 1);
+#else
 	count = read (handle, &savegamestrings[i], SAVESTRINGSIZE);
+#endif
 	close (handle);
 	LoadMenu[i].status = 1;
     }
@@ -607,9 +614,11 @@ void M_LoadSelect(int choice)
 {
     char    name[256];
 	
+#ifndef NAOMI
     if (M_CheckParm("-cdrom"))
 	sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",choice);
     else
+#endif
 	sprintf(name,SAVEGAMENAME"%d.dsg",choice);
     G_LoadGame (name);
     M_ClearMenus ();
@@ -676,7 +685,11 @@ void M_SaveSelect(int choice)
     saveSlot = choice;
     strcpy(saveOldString,savegamestrings[choice]);
     if (!strcmp(savegamestrings[choice],EMPTYSTRING))
+#ifdef NAOMI
+    sprintf(savegamestrings[choice], "SAVE %d", choice + 1);
+#else
 	savegamestrings[choice][0] = 0;
+#endif
     saveCharIndex = strlen(savegamestrings[choice]);
 }
 

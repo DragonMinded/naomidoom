@@ -13,6 +13,7 @@
 #include <naomi/posix.h>
 #include <naomi/thread.h>
 #include <naomi/system.h>
+#include <naomi/sramfs/sramfs.h>
 #include <sys/time.h>
 #include "../doomdef.h"
 #include "../doomstat.h"
@@ -123,6 +124,13 @@ int main()
     if (romfs_init_default() != 0)
     {
         fprintf(stderr, "Failed to init filesystem!");
+        I_DrawErrorScreen();
+    }
+
+    // Init SRAM filesystem.
+    if (sramfs_init_default() != 0)
+    {
+        fprintf(stderr, "Failed to init SRAM filesystem!");
         I_DrawErrorScreen();
     }
 
@@ -1163,6 +1171,13 @@ int test()
     if (romfs_init_default() != 0)
     {
         fprintf(stderr, "Failed to init filesystem!");
+        I_DrawErrorScreen();
+    }
+
+    // Init SRAM filesystem.
+    if (sramfs_init_default() != 0)
+    {
+        fprintf(stderr, "Failed to init SRAM filesystem!");
         I_DrawErrorScreen();
     }
 

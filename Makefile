@@ -20,7 +20,7 @@ FLAGS  = -DNAOMI=1
 CSTD = gnu99
 
 # We are using the add-on sprite library for scaled screen draw.
-LIBS += -lnaomisprite -ltimidity
+LIBS += -lnaomisprite -lnaomisramfs -ltimidity -lz -llfs
 
 # We want a different serial to make this unique.
 SERIAL = BDM0

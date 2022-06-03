@@ -38,7 +38,11 @@
 #endif
 
 // Misc. other strings.
-#define SAVEGAMENAME	"Documents/doomsav"
+#ifdef NAOMI
+#define SAVEGAMENAME "sram://doomsav"
+#else
+#define SAVEGAMENAME "Documents/doomsav"
+#endif
 
 //
 // File locations,
