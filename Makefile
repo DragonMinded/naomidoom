@@ -67,6 +67,21 @@ shareware:
 	rm -rf tmp/
 	echo "Shareware ROM build and placed in shareware/ directory!"
 
+# Provide a helper for making arbitrary releases with an external WAD.
+.PHONY: customwad
+customwad:
+	mkdir tmp || true
+	mv romfs/*.wad tmp/ || true
+	mv romfs/*.WAD tmp/ || true
+	cp "${WADFILE}" romfs/
+	make doom.bin
+	mv doom.bin doom-custom.bin
+	rm romfs/*.wad || true
+	rm romfs/*.WAD || true
+	mv tmp/* romfs/
+	rm -rf tmp/
+	echo "Custom ROM build and moved to doom-custom.bin!"
+
 # Include a simple clean target which wipes the build directory
 # and kills any binary built.
 .PHONY: clean

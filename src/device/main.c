@@ -1838,7 +1838,8 @@ int test()
                     "Ported by DragonMinded",
                     "",
                     "Build date: xxxx-xx-xx",
-                    "Release version: 1.01",
+                    "Release version: 1.02",
+                    "Detected WAD: XXXXXXXXXX",
                     "",
                     "Exit",
                 };
@@ -1849,6 +1850,36 @@ int test()
                 int day = BUILD_DATE % 100;
                 sprintf(&lines[3][12], "%04d-%02d-%02d", year, month, day);
 
+                // Hack the detected version into the correct line.
+                switch(gamemode)
+                {
+                    case shareware:
+                    {
+                        sprintf(&lines[5][14], "shareware");
+                        break;
+                    }
+                    case commercial:
+                    {
+                        sprintf(&lines[5][14], "commercial");
+                        break;
+                    }
+                    case registered:
+                    {
+                        sprintf(&lines[5][14], "registered");
+                        break;
+                    }
+                    case retail:
+                    {
+                        sprintf(&lines[5][14], "retail");
+                        break;
+                    }
+                    default:
+                    {
+                        sprintf(&lines[5][14], "unknown");
+                        break;
+                    }
+                }
+
                 // Draw it doom font style.
                 int top = (video_height() - ((sizeof(lines) / sizeof(lines[0])) * 20)) / 2;
                 for (int i = 0; i < sizeof(lines) / sizeof(lines[0]); i++)
@@ -1856,7 +1887,7 @@ int test()
                     V_DrawText(100, top + (i * 20), lines[i]);
 
                     // Also draw the skull to show menu.
-                    if (i == 6)
+                    if (i == 7)
                     {
                         V_DrawChar(70, top + (i * 20) - 3, W_CacheLumpName(skullName[whichSkull],PU_CACHE), 0);
                     }
