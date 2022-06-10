@@ -1,0 +1,30 @@
+<html>
+    <head>
+        <title>Doom for Naomi WAD Injector</title>
+    </head>
+
+    <body>
+        <div>
+            <p>
+                Select a WAD file to upload.
+            </p>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class=flashes>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            <form action="./" enctype="multipart/form-data" method="post">
+                <p>
+                    <input type="file" id="myFile" name="filename">
+                </p>
+                <p>
+                    <input type="submit" value="Inject WAD">
+                </p>
+            </form>
+        </div>
+    </body>
+</html>
