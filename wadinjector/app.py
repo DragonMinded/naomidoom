@@ -1,7 +1,9 @@
 import argparse
+import fcntl
 import os
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from flask import Flask, Response, flash, request, make_response, render_template
 from werkzeug.utils import secure_filename
 
@@ -15,6 +17,16 @@ app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 def allowed_file(filename: str) -> bool:
     return '.' in filename and \
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@contextmanager
+def repo_lock(lockfile: str):
+    locked_file_descriptor = open(lockfile, 'w+')
+    fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
+    try:
+        yield
+    finally:
+        locked_file_descriptor.close()
 
 
 @app.route('/', methods=["GET"])
@@ -42,37 +54,39 @@ def wadupload() -> Response:
     fullname = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     f.save(fullname)
 
-    # Now, build it!
-    try:
-        output = subprocess.check_output(
-            """
-                set -e
-                source /opt/toolchains/naomi/env.sh
-                cd $GITHUB_ROOT
-                make customwad
-                rm $WADFILE
-            """,
-            shell=True,
-            executable="/bin/bash",
-            stderr=subprocess.STDOUT,
-            env={
-                "GITHUB_ROOT": app.config['GITHUB'],
-                "WADFILE": fullname,
-            }
-        )
+    # We reuse the cache between compiles, so don't let multiple things build at once.
+    with repo_lock(app.config['LOCKFILE']):
+        # Now, build it!
+        try:
+            output = subprocess.check_output(
+                """
+                    set -e
+                    source /opt/toolchains/naomi/env.sh
+                    cd $GITHUB_ROOT
+                    make customwad
+                    rm $WADFILE
+                """,
+                shell=True,
+                executable="/bin/bash",
+                stderr=subprocess.STDOUT,
+                env={
+                    "GITHUB_ROOT": app.config['GITHUB'],
+                    "WADFILE": fullname,
+                }
+            )
 
-        if b"Custom ROM build and moved to doom-custom.bin!" not in output:
+            if b"Custom ROM build and moved to doom-custom.bin!" not in output:
+                flash("Failed to inject WAD!")
+                return render_template("index.html")
+
+            with open(os.path.join(app.config['GITHUB'], 'doom-custom.bin'), "rb") as bfp:
+                response = make_response(bfp.read())
+                response.headers.set('Content-Type', 'application/octet-stream')
+                response.headers.set('Content-Disposition', 'attachment', filename='doom-custom.bin')
+                return response
+        except subprocess.CalledProcessError:
             flash("Failed to inject WAD!")
             return render_template("index.html")
-
-        with open(os.path.join(app.config['GITHUB'], 'doom-custom.bin'), "rb") as bfp:
-            response = make_response(bfp.read())
-            response.headers.set('Content-Type', 'application/octet-stream')
-            response.headers.set('Content-Disposition', 'attachment', filename='doom-custom.bin')
-            return response
-    except subprocess.CalledProcessError:
-        flash("Failed to inject WAD!")
-        return render_template("index.html")
 
 
 if __name__ == '__main__':
@@ -89,4 +103,5 @@ if __name__ == '__main__':
         app.config['UPLOAD_FOLDER'] = tmpdirname
         app.config['SECRET_KEY'] = tmpdirname
         app.config['GITHUB'] = githubdir
+        app.config['LOCKFILE'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lock.file')
         app.run(host='0.0.0.0', port=args.port, debug=args.debug)

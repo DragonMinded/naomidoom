@@ -4,3 +4,4 @@ build
 romfs
 doom.bin
 doom-custom.bin
+lock.file
