@@ -34,6 +34,12 @@ def index() -> Response:
     return render_template("index.html")
 
 
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash('File too large!')
+    return render_template("index.html")
+
+
 @app.route('/', methods=["POST"])
 def wadupload() -> Response:
     if 'filename' not in request.files:
