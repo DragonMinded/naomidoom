@@ -63,7 +63,7 @@ shareware:
 	make doom.bin
 	mv doom.bin shareware/
 	rm romfs/DOOM1.WAD
-	mv tmp/* romfs/
+	mv tmp/* romfs/ || true
 	rm -rf tmp/
 	echo "Shareware ROM build and placed in shareware/ directory!"
 
@@ -78,7 +78,7 @@ customwad:
 	mv doom.bin doom-custom.bin
 	rm romfs/*.wad || true
 	rm romfs/*.WAD || true
-	mv tmp/* romfs/
+	mv tmp/* romfs/ || true
 	rm -rf tmp/
 	echo "Custom ROM build and moved to doom-custom.bin!"
 
