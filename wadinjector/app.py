@@ -63,6 +63,7 @@ def wadupload() -> Response:
                     set -e
                     source /opt/toolchains/naomi/env.sh
                     cd $GITHUB_ROOT
+                    git pull
                     make customwad
                     rm $WADFILE
                 """,
