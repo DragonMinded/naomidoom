@@ -5,3 +5,4 @@ romfs
 doom.bin
 doom-custom.bin
 lock.file
+__pycache__/

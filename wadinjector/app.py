@@ -6,6 +6,7 @@ import tempfile
 from contextlib import contextmanager
 from flask import Flask, Response, flash, request, make_response, render_template
 from werkzeug.utils import secure_filename
+from typing import Generator
 
 UPLOAD_FOLDER = '/path/to/the/uploads'
 ALLOWED_EXTENSIONS = {'wad'}
@@ -20,7 +21,7 @@ def allowed_file(filename: str) -> bool:
 
 
 @contextmanager
-def repo_lock(lockfile: str):
+def repo_lock(lockfile: str) -> Generator[None, None, None]:
     locked_file_descriptor = open(lockfile, 'w+')
     fcntl.lockf(locked_file_descriptor, fcntl.LOCK_EX)
     try:
@@ -35,7 +36,7 @@ def index() -> Response:
 
 
 @app.errorhandler(413)
-def request_entity_too_large(error):
+def request_entity_too_large(error: object) -> Response:
     flash('File too large!')
     return render_template("index.html")
 
@@ -112,3 +113,12 @@ if __name__ == '__main__':
         app.config['GITHUB'] = githubdir
         app.config['LOCKFILE'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lock.file')
         app.run(host='0.0.0.0', port=args.port, debug=args.debug)
+else:
+    githubdir = os.environ.get('GITHUB', os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
+    lockfile = os.environ.get('LOCKFILE', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lock.file'))
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        app.config['UPLOAD_FOLDER'] = tmpdirname
+        app.config['SECRET_KEY'] = tmpdirname
+        app.config['GITHUB'] = githubdir
+        app.config['LOCKFILE'] = lockfile
