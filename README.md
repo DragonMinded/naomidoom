@@ -21,7 +21,9 @@ to make this happen, but I certainly won't be that person!
 A precompiled release with the Doom 1 Shareware WAD is available under the `shareware/` directory. Load
 it with Demul or net boot it on your Naomi cabinet to play it! As I don't have the rights to distribute
 commercial versions of Doom, there is no compiled version of Doom Ultimate or other versions. If you have
-the WADs, compile it yourself!
+the WADs, compile it yourself! Alternatively, you can visit https://doom.dragonminded.com/ which hosts a
+version of the `wadinjector/` app and provide a WAD that you own to get a compiled version of Doom for Naomi
+that includes that WAD.
 
 ## Working WAD Files
 
