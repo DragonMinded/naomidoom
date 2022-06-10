@@ -116,9 +116,12 @@ if __name__ == '__main__':
 else:
     githubdir = os.environ.get('GITHUB', os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
     lockfile = os.environ.get('LOCKFILE', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lock.file'))
+    tempdir = tempfile.mkdtemp()
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        app.config['UPLOAD_FOLDER'] = tmpdirname
-        app.config['SECRET_KEY'] = tmpdirname
-        app.config['GITHUB'] = githubdir
-        app.config['LOCKFILE'] = lockfile
+    print(f"File uploads will go to {tempdir}")
+    print(f"Building doom executables out of {githubdir}")
+
+    app.config['UPLOAD_FOLDER'] = tempdir
+    app.config['SECRET_KEY'] = tempdir
+    app.config['GITHUB'] = githubdir
+    app.config['LOCKFILE'] = lockfile
