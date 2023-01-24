@@ -31,6 +31,7 @@ The following WADs have been tested working with Doom for Sega Naomi:
 
 * Original Doom shareware WAD (DOOM1.WAD).
 * Doom Ultimate WAD (DOOM.WAD or DOOMU.WAD, depending on source).
+* Doom II WAD (DOOM2.WAD).
 
 ## Default Controls
 
