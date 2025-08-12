@@ -85,7 +85,7 @@ def wadupload() -> Response:
 
             if b"Custom ROM build and moved to doom-custom.bin!" not in output:
                 # Display the output on the debug/uWSGI console.
-                print(output)
+                print(output.decode('utf-8'))
 
                 flash("Failed to inject WAD!")
                 return render_template("index.html")
@@ -97,7 +97,7 @@ def wadupload() -> Response:
                 return response
         except subprocess.CalledProcessError as err:
             # Display the full error on the debug/uWSGI console.
-            print(err.output)
+            print(err.output.decode('utf-8'))
 
             flash("Failed to inject WAD!")
             return render_template("index.html")
