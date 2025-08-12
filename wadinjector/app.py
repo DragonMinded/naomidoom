@@ -78,6 +78,7 @@ def wadupload() -> Response:
                 executable="/bin/bash",
                 stderr=subprocess.STDOUT,
                 env={
+                    **os.environ,
                     "GITHUB_ROOT": app.config['GITHUB'],
                     "WADFILE": fullname,
                 }
